@@ -1,4 +1,26 @@
 # define basic Path
-import pyscf
-from omegaconf import DictConfig, OmegaConf
-import hydra
+
+# package
+
+# module
+
+__all__ = []
+
+ATOM_INFO={
+    'H':{
+        
+    },
+    'C':{
+        
+    },
+    'O':{
+        
+    },
+    'N':{
+        
+    },
+    'F':{
+
+    },
+}
+
