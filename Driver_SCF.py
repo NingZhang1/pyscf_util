@@ -1,10 +1,10 @@
 import TEST_CONFIG
 
 import pyscf
-import Mole_Util
+import Util_Mole
 
 
-def Run_SCF(mol, sfx1e=False,  newton=False, do_pyscf_analysis=True):
+def Run_SCF(mol, sfx1e=False,  newton=False):
     my_hf = pyscf.scf.ROHF(mol)
     if sfx1e:
         my_hf = pyscf.scf.sfx2c(my_hf)
@@ -16,7 +16,7 @@ def Run_SCF(mol, sfx1e=False,  newton=False, do_pyscf_analysis=True):
 
 def Analysis_SCF(mol, my_hf):
     mo_energy = my_hf.mo_energy
-    orbsym_ID, orbsym = Mole_Util.get_orbsym(mol, my_hf.mo_coeff)
+    orbsym_ID, orbsym = Util_Mole.get_orbsym(mol, my_hf.mo_coeff)
     mo_occ = my_hf.mo_occ
 
     print("\n\n***********************************************")
