@@ -1,15 +1,12 @@
-from certifi import where
 import pyscf
 import numpy
-from sympy import false, true
 import Driver_SCF
 import Util_Mole
-from pyscf import tools
 from functools import reduce
 
-A5g_ID = 0
+A1g_ID = 0
 A2g_ID = 1
-A5u_ID = 5
+A1u_ID = 5
 A2u_ID = 4
 E1gx_ID = 2
 E1gy_ID = 3
@@ -32,10 +29,6 @@ E5gy_ID = 23
 E5ux_ID = 27
 E5uy_ID = 26
 
-# A5g_ID = 0
-# A2g_ID = 5
-# A5u_ID = 5
-# A2u_ID = 4
 E1g_up_ID = 2
 E1g_dn_ID = 3
 E1u_up_ID = 7

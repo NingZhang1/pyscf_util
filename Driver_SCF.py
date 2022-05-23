@@ -2,7 +2,8 @@ import TEST_CONFIG
 
 import pyscf
 import Util_Mole
-
+import numpy as np
+from pyscf import fci, mcscf
 
 def Run_SCF(mol, sfx1e=False,  newton=False):
     my_hf = pyscf.scf.ROHF(mol)
@@ -42,6 +43,7 @@ def Analysis_SCF(mol, my_hf):
 
 
 def Run_MCSCF(_mol, _rohf, _nelecas, _ncas,
+              _frozen = None,
               _mo_init=None,
               _cas_list=None,
               _mc_conv_tol=1e-7,
@@ -58,6 +60,7 @@ def Run_MCSCF(_mol, _rohf, _nelecas, _ncas,
     my_mc = pyscf.mcscf.CASSCF(_rohf, nelecas=_nelecas, ncas=_ncas)
     my_mc.conv_tol = _mc_conv_tol
     my_mc.max_cycle_macro = _mc_max_macro
+    my_mc.frozen = _frozen
     # print("In RUN_MCSCF", my_mc.mol)
     # Sort MO
     mo_init = _rohf.mo_coeff
@@ -95,24 +98,24 @@ def Run_MCSCF(_mol, _rohf, _nelecas, _ncas,
                 nstates += state[2]
             my_mc = mcscf.state_average_mix_(
                 my_mc, solver_all, (np.ones(nstates)/nstates))
-    else:
-        if _iCI_State is None:
-            if _pyscf_state is None:
-                _iCI_State = [[_nelecas % 2, 0, 1], ]
-            else:
-                _iCI_State = []
-                for state in _pyscf_state:
-                    state_iCI = [state[0], pyscf.symm.irrep_name2id(
-                        _mol.groupname, state[1]) % 10, state[2]]
-                    _iCI_State.append(state_iCI)
-                print(_iCI_State)
-                # if _mol.groupname == 'Dooh' or _mol.groupname == 'Coov':
-                #     raise ValueError("Not support group Dooh or Coov")
-        my_mc.fcisolver = iCISCF.iCI(mol=_mol,
-                                     cmin=_cmin,
-                                     state=_iCI_State,
-                                     tol=_tol,
-                                     mo_coeff=mo_init)
+    # else:
+    #     if _iCI_State is None:
+    #         if _pyscf_state is None:
+    #             _iCI_State = [[_nelecas % 2, 0, 1], ]
+    #         else:
+    #             _iCI_State = []
+    #             for state in _pyscf_state:
+    #                 state_iCI = [state[0], pyscf.symm.irrep_name2id(
+    #                     _mol.groupname, state[1]) % 10, state[2]]
+    #                 _iCI_State.append(state_iCI)
+    #             print(_iCI_State)
+    #             # if _mol.groupname == 'Dooh' or _mol.groupname == 'Coov':
+    #             #     raise ValueError("Not support group Dooh or Coov")
+    #     my_mc.fcisolver = iCISCF.iCI(mol=_mol,
+    #                                  cmin=_cmin,
+    #                                  state=_iCI_State,
+    #                                  tol=_tol,
+    #                                  mo_coeff=mo_init)
     # Run
     if _iCI:
         my_mc.internal_rotation = _internal_rotation
