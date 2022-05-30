@@ -5,6 +5,7 @@ import Util_Mole
 import numpy as np
 from pyscf import fci, mcscf
 
+
 def Run_SCF(mol, sfx1e=False,  newton=False):
     my_hf = pyscf.scf.ROHF(mol)
     if sfx1e:
@@ -13,6 +14,16 @@ def Run_SCF(mol, sfx1e=False,  newton=False):
         my_hf = pyscf.scf.newton(my_hf)
     my_hf.kernel()
     return my_hf
+
+
+def mocoeff_phase_canonicalize(mo_coeff):
+    for i in range(mo_coeff.shape[1]):
+        for j in range(mo_coeff.shape[0]):
+            if abs(mo_coeff[j, i]) > 1e-4:
+                if mo_coeff[j, i] < 0:
+                    mo_coeff[:, i] *= -1
+                break
+    return mo_coeff
 
 
 def Analysis_SCF(mol, my_hf):
@@ -43,7 +54,7 @@ def Analysis_SCF(mol, my_hf):
 
 
 def Run_MCSCF(_mol, _rohf, _nelecas, _ncas,
-              _frozen = None,
+              _frozen=None,
               _mo_init=None,
               _cas_list=None,
               _mc_conv_tol=1e-7,

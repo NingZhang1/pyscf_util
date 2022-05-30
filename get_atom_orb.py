@@ -8,7 +8,19 @@ Atom_Info = {
         "state": [[0, 'b1g', 1], [0, 'b2g', 1], [0, 'b3g', 1]],
         "nelec": (2, 0)
     },
+    'Si': {
+        "charge_fake": 2,
+        "spin": 2,
+        "state": [[0, 'b1g', 1], [0, 'b2g', 1], [0, 'b3g', 1]],
+        "nelec": (2, 0)
+    },
     'N': {
+        "charge_fake": 3,
+        "spin": 3,
+        "state": [[1, 'au', 1]],
+        "nelec": (3, 0)
+    },
+    'P': {
         "charge_fake": 3,
         "spin": 3,
         "state": [[1, 'au', 1]],
@@ -19,6 +31,24 @@ Atom_Info = {
         "spin": 2,
         "state": [[0, 'b1g', 1], [0, 'b2g', 1], [0, 'b3g', 1]],
         "nelec": (3, 1)
+    },
+    'S': {
+        "charge_fake": 4,
+        "spin": 2,
+        "state": [[0, 'b1g', 1], [0, 'b2g', 1], [0, 'b3g', 1]],
+        "nelec": (3, 1)
+    },
+    'F': {
+        "charge_fake": -1,
+        "spin": 1,
+        "state": [[1, 'b1u', 1], [1, 'b2u', 1], [1, 'b3u', 1]],
+        "nelec": (3, 2)
+    },
+    'Cl': {
+        "charge_fake": -1,
+        "spin": 1,
+        "state": [[1, 'b1u', 1], [1, 'b2u', 1], [1, 'b3u', 1]],
+        "nelec": (3, 2)
     },
 }
 
@@ -116,6 +146,7 @@ H   0.000000000000       0.000000000000      0.000000000000
 
 def atom_min_cas_bas(atom_label_list, basis='6-31G(d)', print_verbose=0):
     res = {}
+    res['basis'] = basis
     for atom in atom_label_list:
         a, b = _atom_min_cas(atom, basis, print_verbose)
         res[atom] = b
