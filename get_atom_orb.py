@@ -75,6 +75,34 @@ def _remove_orb_other_than_sp(energy, start_indx):
     return res
 
 
+def _label_atom_orb(energy):
+
+    orb_info = [["s", 0], ["p", 1], ["d", 2], ["f", 3], ["g", 4], ["h", 5]]
+
+    energy_now = 1e10
+    multi = 0
+    res = {}
+    orb_indx = []
+    for indx in range(0, len(energy)):
+        if abs(energy[indx]-energy_now) > 1e-8 and  multi != 0:
+            l = (multi-1)//2
+            orb_info[l][1] += 1
+            res[str(orb_info[l][1])+orb_info[l][0]] = orb_indx
+            # print(res)
+            energy_now = energy[indx]
+            multi = 1
+            orb_indx = [indx]
+        else:
+            orb_indx.append(indx)
+            multi += 1
+
+    l = (multi-1)//2
+    orb_info[l][1] += 1
+    res[str(orb_info[l][1])+orb_info[l][0]] = orb_indx
+
+    return res
+
+
 def _atom_min_cas(atom_label, basis='6-31G(d)', print_verbose=0):
     if atom_label == "H":
         mol = pyscf.gto.M(
@@ -90,7 +118,7 @@ H   0.000000000000       0.000000000000      0.000000000000
         mol.build()
         scf = pyscf.scf.ROHF(mol)
         scf.kernel()
-        return [scf.mo_energy, scf.mo_coeff]
+        return [scf.mo_energy, scf.mo_coeff, _label_atom_orb(scf.mo_energy)]
 
     else:
         mol = pyscf.gto.M(
@@ -141,17 +169,19 @@ H   0.000000000000       0.000000000000      0.000000000000
         if print_verbose >= 10:
             print(min_cas_.mo_coeff[:, -2])
 
-        return [min_cas_.mo_energy, min_cas_.mo_coeff]
+        return [min_cas_.mo_energy, min_cas_.mo_coeff, _label_atom_orb(min_cas_.mo_energy)]
 
 
 def atom_min_cas_bas(atom_label_list, basis='6-31G(d)', print_verbose=0):
     res = {}
     res['basis'] = basis
     for atom in atom_label_list:
-        a, b = _atom_min_cas(atom, basis, print_verbose)
+        a, b, c = _atom_min_cas(atom, basis, print_verbose)
         res[atom] = b
+        res[atom+"_bas_label"] = c 
         if print_verbose >= 10:
             print(a)
+            print(c)
     return res
 
 

@@ -9,7 +9,7 @@ def _orthogonalize(_vec, _ovlp):
     for i in range(nvec):
         veci = _vec[:, i]
         norm = numpy.sqrt(reduce(numpy.dot, (veci.T, _ovlp, veci)))
-        print("norm %e" % norm)
+        # print("norm %e" % norm)
         _vec[:, i] /= norm
         for j in range(i+1, nvec):
             vecj = _vec[:, j]

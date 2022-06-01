@@ -1,3 +1,4 @@
+from functools import reduce
 import TEST_CONFIG
 
 import pyscf
@@ -12,6 +13,27 @@ def Run_SCF(mol, sfx1e=False,  newton=False):
         my_hf = pyscf.scf.sfx2c(my_hf)
     if newton:
         my_hf = pyscf.scf.newton(my_hf)
+    my_hf.kernel()
+    return my_hf
+
+
+def Run_SCF_customized(mol, mo_coeff, sfx1e=False,  newton=False):
+    my_hf = pyscf.scf.ROHF(mol)
+    if sfx1e:
+        my_hf = pyscf.scf.sfx2c(my_hf)
+    if newton:
+        my_hf = pyscf.scf.newton(my_hf)
+
+    ovlp = mol.intor("int1e_ovlp")
+    ovlp = reduce(np.dot, (mo_coeff.T, ovlp, mo_coeff))
+    hcore = my_hf.get_hcore()
+    hcore = reduce(np.dot, (mo_coeff.T, hcore, mo_coeff))
+    eri = pyscf.ao2mo.full(eri_or_mol=mol, mo_coeff=mo_coeff, aosym='4')
+
+    my_hf.get_hcore = lambda *args: hcore
+    my_hf.get_ovlp = lambda *args: ovlp
+    my_hf._eri = eri
+
     my_hf.kernel()
     return my_hf
 

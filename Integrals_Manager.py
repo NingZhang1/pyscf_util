@@ -1,6 +1,6 @@
 import pyscf
 from pyscf import tools
-
+import numpy as np
 
 
 def dump_heff_casci(_mol, _mcscf, _core_coeff, _mocoeff, _filename='FCIDUMP'):
