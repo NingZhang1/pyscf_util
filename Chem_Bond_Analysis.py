@@ -267,6 +267,8 @@ class ChemBondAnalyzer:
         self.nocc = 0
         self.atm_occ_bas = None
         self.vir_label = vir_label
+        self.mole_atm_bas = None
+        self.mole_atm_loc = None
 
         # 辅助信息 -- 成键分析
 
@@ -310,6 +312,17 @@ class ChemBondAnalyzer:
         else:
             raise RuntimeError
 
+    @property
+    def dm(self):
+        if self.rohf is None:
+            self._run_scf()
+        return numpy.dot(self.canonical_mo_occ, self.canonical_mo_occ.T) * 2.0
+
+    @property
+    def dm_mole_atom_bas(self):
+        C_mole_atom_bas = numpy.dot(self.mole_atm_bas.I,self.canonical_mo_occ)
+        return numpy.dot(C_mole_atom_bas, C_mole_atom_bas.T) * 2.0
+
     # build subobject
 
     def _get_mol(self, xyz=None, charge=0, spin=0, basis='6-31G(d)', symmetry="", print_verbose=0):
@@ -326,7 +339,7 @@ class ChemBondAnalyzer:
     def _get_atom_basis_for_mol(self):
 
         if self._atom_bas is None:
-            self._atom_bas = self._get_atom_bas()
+            self._get_atom_bas()
 
         if self.atm_occ_bas is None:
 
@@ -350,6 +363,10 @@ class ChemBondAnalyzer:
             self.atm_large_bas[:, :self.atm_nocc] = self.atm_occ_bas
             self.atm_large_bas[:,
                                self.atm_nocc:self.atm_n_large] = atm_vir_bas
+
+            self.mole_atm_loc, self.mole_atm_bas,  _, _, _, _ = generate_atom_basis(
+                self.mol, self.atom_bas)
+            self.mole_atm_bas = numpy.matrix(self.mole_atm_bas)
 
             if self.verbose > 10:
                 print(self.atm_large_bas)

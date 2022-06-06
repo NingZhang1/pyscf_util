@@ -20,7 +20,7 @@ def check_locMO(atm_bas='6-31G(d)', vir_label=Chem_Bond_Analysis.vir_label_min, 
             xyz = ''.join(lines[2:])
             # mol = get_mol_by(xyz)
             chem_bond_analyzer = Chem_Bond_Analysis.ChemBondAnalyzer(
-                xyz=xyz, print_verbose=0, basis=atm_bas)
+                xyz=xyz, print_verbose=0, basis=atm_bas)  # bugs!
             chem_bond_analyzer.atom_bas = atom_bas
             etot = chem_bond_analyzer.e_tot
             occ_vir_etot = chem_bond_analyzer.check_cnvg_orb_proj_atm_occ_vir()
