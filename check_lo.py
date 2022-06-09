@@ -12,7 +12,8 @@ def check_locMO(atm_bas='6-31G(d)', vir_label=Chem_Bond_Analysis.vir_label_min, 
     atom_bas = get_atom_orb.atom_min_cas_bas(
         ["C", "H", "O", "N", "F"], basis=atm_bas, print_verbose=0)
 
-    file_list = sorted(os.listdir(load_path))
+    file_list = sorted(os.listdir(load_path))[:2048]
+    print("length of file_list",len(file_list))
     res = []
     for fname in tqdm(file_list):
         with open(os.path.join(load_path, fname), 'r') as fp:

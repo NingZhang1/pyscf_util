@@ -13,7 +13,7 @@ def get_orbsym(mol, mocoeff):
     return OrbSymID, OrbSym
 
 
-def get_mol(xyz, charge=0, spin=0, basis='6-31G(d)', symmetry="", print_verbose=0):
+def get_mol(xyz, charge=0, spin=0, basis='6-31G(d)', symmetry="", print_verbose=0, unit='angstorm'):
     mol = pyscf.gto.M(
         verbose=print_verbose,
         atom=xyz,
@@ -21,6 +21,7 @@ def get_mol(xyz, charge=0, spin=0, basis='6-31G(d)', symmetry="", print_verbose=
         spin=spin,
         charge=charge,
         symmetry=symmetry,
+        unit=unit
     )
     mol.build()
     return mol
@@ -50,12 +51,12 @@ def get_mole_info_for_chem_bond_analysis(mol):
     for label in atom_label:
         res[label] = {
             'atom_id': atom_id,
-            'atom_orb_loc': None,
-            'atom_id_bonded': None,
-            'atom_label_bonded': None,
-            'bond_level': numpy.zeros(mol.natm),  # an array 0 --> not bonded,
-            'chemical bond': None,  # [loc_orb_id,atom_id]
-            'non-bonding orb_id': None,
+            # 'atom_orb_loc': None,
+            # 'atom_id_bonded': None,
+            # 'atom_label_bonded': None,
+            # 'bond_level': numpy.zeros(mol.natm),  # an array 0 --> not bonded,
+            # 'chemical bond': None,  # [loc_orb_id,atom_id]
+            # 'non-bonding orb_id': None,
         }
 
     return res, atom_label
@@ -83,4 +84,3 @@ def get_bas_rotate_matrix(mol, alpha, beta, gamma):
             res[loc:loc+2*l+1, loc:loc+2*l + 1] = dmat
             loc += 2*l+1
     return numpy.matrix(res)
-

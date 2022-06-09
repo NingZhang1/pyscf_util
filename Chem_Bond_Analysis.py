@@ -64,6 +64,8 @@ def generate_atm_bas_given_label(mol, atom_min_cas_bas, label):
 
     orb_info = {}
 
+    atom_loc = [0]
+
     for i in range(mol.natm):
         atom_symbol = mol.atom_pure_symbol(i)
         atom_min_cas_bas_ = atom_min_cas_bas[mol.atom_pure_symbol(i)]
@@ -79,13 +81,18 @@ def generate_atm_bas_given_label(mol, atom_min_cas_bas, label):
                 col_loc_end = col_loc_begin + nbas_tmp
                 res[row_loc_begin:row_loc_end, col_loc_begin:col_loc_end] = atom_min_cas_bas_[
                     :, atom_min_cas_bas[atom_symbol+"_bas_label"][orb_symbol]]
+                # print(row_loc_begin,row_loc_end,col_loc_begin,col_loc_end)
                 orb_info[atom_symbol_unique+"_" +
                          orb_symbol] = list(range(col_loc_begin, col_loc_end))
                 col_loc_begin = col_loc_end
 
-        row_loc_begin = row_loc_end
+        atom_loc.append(col_loc_begin)
 
-    return res, orb_info
+        row_loc_begin = row_loc_end
+    
+    # print(res)
+
+    return res, orb_info, atom_loc
 
 
 def generate_atom_basis(mol, atom_min_cas_bas):
@@ -186,7 +193,7 @@ def analysis_mole_occ_orb(xyz, atom_bas, basis="6-31G(d)", charge=0, spin=0, ver
                 print("%8.2f " % (comp*100), end="")
             print("")
 
-    draw_heatmap(comp_orb, indx, atom)
+    draw_heatmap(comp_orb, indx, atom, annot=True)
 
     # latex
 
@@ -221,7 +228,7 @@ def analysis_mole_occ_orb(xyz, atom_bas, basis="6-31G(d)", charge=0, spin=0, ver
                 print("%8.2f " % (comp*100), end="")
             print("")
 
-    draw_heatmap(comp_orb, indx, atom)
+    draw_heatmap(comp_orb, indx, atom, annot=True)
 
     if latex:
         for i in range(mol.natm):
@@ -266,14 +273,18 @@ class ChemBondAnalyzer:
         self.canonical_mo_occ = None
         self.nocc = 0
         self.atm_occ_bas = None
+        self.atm_occ_loc = None
         self.vir_label = vir_label
         self.mole_atm_bas = None
         self.mole_atm_loc = None
 
+        self.atm_label = None
+
         # 辅助信息 -- 成键分析
 
         self.rohf = None
-        # self.comp_occ_orb = None
+        self.comp_occ_orb = None
+        self.bond_graph = None
 
         # 辅助信息 -- 分子
 
@@ -343,11 +354,11 @@ class ChemBondAnalyzer:
 
         if self.atm_occ_bas is None:
 
-            self.atm_occ_bas, self.atm_occ_label = generate_atm_bas_given_label(
+            self.atm_occ_bas, self.atm_occ_label, self.atm_occ_loc = generate_atm_bas_given_label(
                 self.mol, self.atom_bas, occ_label)
             self.atm_nocc = self.atm_occ_bas.shape[1]
 
-            atm_vir_bas, atm_vir_label = generate_atm_bas_given_label(
+            atm_vir_bas, atm_vir_label, _ = generate_atm_bas_given_label(
                 self.mol, self.atom_bas, self.vir_label)
 
             self.atm_n_large = self.atm_nocc + atm_vir_bas.shape[1]
@@ -371,6 +382,10 @@ class ChemBondAnalyzer:
             if self.verbose > 10:
                 print(self.atm_large_bas)
                 print(self.atm_large_bas_label)
+            
+            # 原子标记 
+
+            _,self.atm_label = Util_Mole.get_mole_info_for_chem_bond_analysis(self.mol)
 
     def _run_scf(self):
         if self.rohf is None:
@@ -382,10 +397,11 @@ class ChemBondAnalyzer:
             self.loc_mo = lo.Boys(self.mol, self.canonical_mo_occ).kernel()
 
             self._get_atom_basis_for_mol()
-            self.atm_occ_bas_orth = Util_Math._orthogonalize(
-                self.atm_occ_bas, self.ovlp)
-            self.atm_large_bas_orth = Util_Math._orthogonalize(
-                self.atm_large_bas, self.ovlp)
+
+            # self.atm_occ_bas_orth = Util_Math._orthogonalize(
+            #     self.atm_occ_bas.copy(), self.ovlp)
+            # self.atm_large_bas_orth = Util_Math._orthogonalize(
+            #     self.atm_large_bas, self.ovlp)
 
     def _check_input_mo(self, mo_occ, opt=False):
         self._run_scf()
@@ -414,25 +430,65 @@ class ChemBondAnalyzer:
 
     # do the work
 
-    def analysis_mole_occ_orb(self):
+    def analysis_mole_occ_orb(self, print_verbose=0):
 
         self._get_atom_basis_for_mol()
-        self._run_scf()
+        
+        if self.loc_mo is None:
+            self._run_scf()
+        if self.ovlp is None:
+            self.ovlp = self.mol.intor("int1e_ovlp")
 
-    def check_cnvg_orb_proj_atm_occ(self, opt=False):
-        self._run_scf()
-        cnvg_orb = self.canonical_mo_occ
-        coeff = reduce(numpy.dot, (cnvg_orb.T, self.ovlp,
-                       self.atm_occ_bas_orth))  # (nocc, nocc_atm)
-        orb_proj = numpy.dot(self.atm_occ_bas_orth, coeff.T)  # (nato,nocc)
-        orb_proj = Util_Math._orthogonalize(orb_proj, self.ovlp)
-        return self._check_input_mo(orb_proj, opt)
+        ovlp_atom_occ_mole_occ = reduce(numpy.dot, (self.atm_occ_bas.T, self.ovlp, self.loc_mo))
+        ovlp_atom_occ_mole_occ = numpy.square(ovlp_atom_occ_mole_occ)
 
-    def check_cnvg_orb_proj_atm_occ_vir(self, opt=False):
-        self._run_scf()
-        cnvg_orb = self.canonical_mo_occ
-        coeff = reduce(numpy.dot, (cnvg_orb.T, self.ovlp,
-                       self.atm_large_bas_orth))  # (nocc, nocc_atm)
-        orb_proj = numpy.dot(self.atm_large_bas_orth, coeff.T)  # (nato,nocc)
-        orb_proj = Util_Math._orthogonalize(orb_proj, self.ovlp)
-        return self._check_input_mo(orb_proj, opt)
+        self.comp_occ_orb = numpy.zeros((self.mol.natm, self.nocc))    
+
+        for i in range(self.mol.natm):
+            tmp = ovlp_atom_occ_mole_occ[self.atm_occ_loc[i]:self.atm_occ_loc[i+1], :]
+            tmp = numpy.sum(tmp, axis=0)
+            self.comp_occ_orb[i, :] = tmp * 100
+            
+        
+        if print_verbose >= 10:
+            draw_heatmap(self.comp_occ_orb,column=list(range(self.loc_mo.shape[1])),indx=self.atm_label,annot=True)
+            # print(self.comp_occ_orb)
+
+    def get_mole_graph(self):
+
+        self.analysis_mole_occ_orb()
+        self.bond_graph = numpy.zeros((self.mol.natm,self.mol.natm),dtype=numpy.int32)
+        for mo_id in range(self.loc_mo.shape[1]):
+            res = []
+            for iatm in range(self.mol.natm):
+                if self.comp_occ_orb[iatm,mo_id]>35:
+                    res.append(iatm)
+            if len(res)==1:
+                self.bond_graph[res[0],res[0]] += 1
+            else:
+                if len(res)==2:
+                    self.bond_graph[res[0],res[1]] += 1
+                    self.bond_graph[res[1],res[0]] += 1
+                else:
+                    print("fatal error")
+                    raise RuntimeError
+        return self.bond_graph
+
+
+    # def check_cnvg_orb_proj_atm_occ(self, opt=False):
+    #     self._run_scf()
+    #     cnvg_orb = self.canonical_mo_occ
+    #     coeff = reduce(numpy.dot, (cnvg_orb.T, self.ovlp,
+    #                    self.atm_occ_bas_orth))  # (nocc, nocc_atm)
+    #     orb_proj = numpy.dot(self.atm_occ_bas_orth, coeff.T)  # (nato,nocc)
+    #     orb_proj = Util_Math._orthogonalize(orb_proj, self.ovlp)
+    #     return self._check_input_mo(orb_proj, opt)
+    # def check_cnvg_orb_proj_atm_occ_vir(self, opt=False):
+    #     self._run_scf()
+    #     cnvg_orb = self.canonical_mo_occ
+    #     coeff = reduce(numpy.dot, (cnvg_orb.T, self.ovlp,
+    #                    self.atm_large_bas_orth))  # (nocc, nocc_atm)
+    #     orb_proj = numpy.dot(self.atm_large_bas_orth, coeff.T)  # (nato,nocc)
+    #     orb_proj = Util_Math._orthogonalize(orb_proj, self.ovlp)
+    #     return self._check_input_mo(orb_proj, opt)
+    
