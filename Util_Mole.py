@@ -63,7 +63,9 @@ def get_mole_info_for_chem_bond_analysis(mol):
 
 
 def get_rotated_mol_coord(mol, rot_center, alpha, beta, gamma):
-    coord = mol.atom_coords() * 0.52917720859
+    coord = mol.atom_coords()
+    if mol.unit == 'angstorm':
+        coord = coord * 0.52917720859
     coord -= rot_center
     rot_mat = Util_Math.get_rotation_matrix_euler_angle_ZYZ(alpha, beta, gamma)
     coord = numpy.dot(rot_mat, coord.T).T
@@ -72,6 +74,18 @@ def get_rotated_mol_coord(mol, rot_center, alpha, beta, gamma):
     for i in range(mol.natm):
         res.append([mol.atom_symbol(i), coord[i, :]])
     return res
+
+
+def get_mol_xyz_list_format(mol):
+    return get_rotated_mol_coord(mol, [0.0, 0.0, 0.0], 0.0, 0.0, 0.0)
+
+
+def get_mol_geometric_center(mol):
+    xyz_list = get_mol_xyz_list_format(mol)
+    res = xyz_list[0][1]
+    for i in range(1, mol.natm):
+        res += xyz_list[i][1]
+    return res/mol.natm
 
 
 def get_bas_rotate_matrix(mol, alpha, beta, gamma):
