@@ -36,6 +36,7 @@ def get_mole_info_for_chem_bond_analysis(mol):
         "C": 0,
         "O": 0,
         "N": 0,
+        "F": 0,
     }
 
     atom_label = []
@@ -61,6 +62,11 @@ def get_mole_info_for_chem_bond_analysis(mol):
 
     return res, atom_label
 
+def get_atm_symbol(mol):
+    res = []
+    for id in range(mol.natm):
+        res.append(mol.atom_symbol(id))
+    return res
 
 def get_rotated_mol_coord(mol, rot_center, alpha, beta, gamma):
     coord = mol.atom_coords()
@@ -75,6 +81,11 @@ def get_rotated_mol_coord(mol, rot_center, alpha, beta, gamma):
         res.append([mol.atom_symbol(i), coord[i, :]])
     return res
 
+def get_xyz_list_format(mol):
+    coord = mol.atom_coords()
+    if mol.unit == 'angstorm':
+        coord = coord * 0.52917720859
+    return coord
 
 def get_mol_xyz_list_format(mol):
     return get_rotated_mol_coord(mol, [0.0, 0.0, 0.0], 0.0, 0.0, 0.0)
@@ -140,6 +151,7 @@ def get_atm_bas_in_mole_fix_local_gauge_problem(mol, mole_graph):
             'H': 'sto-3g',
             'O': 'sto-3g',
             'N': 'sto-3g',
+            'F': 'sto-3g',
             'X': pyscf.gto.basis.load('sto-3g', 'H')
         }
 
