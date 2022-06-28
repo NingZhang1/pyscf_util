@@ -88,7 +88,13 @@ def get_xyz_list_format(mol):
     return coord
 
 def get_mol_xyz_list_format(mol):
-    return get_rotated_mol_coord(mol, [0.0, 0.0, 0.0], 0.0, 0.0, 0.0)
+    coord = mol.atom_coords()
+    if mol.unit == 'angstorm':
+        coord = coord * 0.52917720859
+    res = []
+    for i in range(mol.natm):
+        res.append([mol.atom_symbol(i), coord[i, :]])
+    return res
 
 
 def get_mol_geometric_center(mol):
