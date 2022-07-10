@@ -3,6 +3,7 @@ import numpy
 import Driver_SCF
 import Util_Mole
 from functools import reduce
+from pyscf import tools
 
 A1g_ID = 0
 A2g_ID = 1
@@ -60,6 +61,9 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     # orbsym_ID, _ = Util_Mole.get_orbsym(mol, coeff)
 
+    A1u = [i for i, x in enumerate(orbsym_ID) if x is A1u_ID]
+    A2u = [i for i, x in enumerate(orbsym_ID) if x is A2u_ID]
+
     E1g_x = [i for i, x in enumerate(orbsym_ID) if x is E1gx_ID]
     E1g_y = [i for i, x in enumerate(orbsym_ID) if x is E1gy_ID]
     E1u_x = [i for i, x in enumerate(orbsym_ID) if x is E1ux_ID]
@@ -93,18 +97,21 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     Parity = numpy.ones(len(orbsym_ID), dtype=numpy.int)
 
+    Parity[A1u] = -1
+    Parity[A2u] = -1
+
     for orbx, orby in zip(E1g_x, E1g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 1
         Lz[orby] = -1
 
     for orbx, orby in zip(E1u_x, E1u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 1
         Lz[orby] = -1
@@ -113,16 +120,16 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     for orbx, orby in zip(E2g_x, E2g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 2
         Lz[orby] = -2
 
     for orbx, orby in zip(E2u_x, E2u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 2
         Lz[orby] = -2
@@ -131,16 +138,16 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     for orbx, orby in zip(E3g_x, E3g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 3
         Lz[orby] = -3
 
     for orbx, orby in zip(E3u_x, E3u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 3
         Lz[orby] = -3
@@ -149,16 +156,16 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     for orbx, orby in zip(E4g_x, E4g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 4
         Lz[orby] = -4
 
     for orbx, orby in zip(E4u_x, E4u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 4
         Lz[orby] = -4
@@ -167,16 +174,16 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     for orbx, orby in zip(E5g_x, E5g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 5
         Lz[orby] = -5
 
     for orbx, orby in zip(E5u_x, E5u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = -factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
+        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 5
         Lz[orby] = -5
@@ -477,10 +484,10 @@ if __name__ == "__main__":
     mol = pyscf.gto.M(
         verbose=4,
         atom='''
-C   0.000000000000       0.000000000000      -0.625265
-C   0.000000000000       0.000000000000       0.625265
+C   0.000000000000       0.000000000000      -0.621265
+C   0.000000000000       0.000000000000       0.621265
 ''',
-        basis={'C': 'ccpvtz', 'H': 'ccpvdz'},
+        basis={'C': 'cc-pvdz'},
         spin=0,
         charge=0,
         symmetry='dooh',
@@ -492,10 +499,8 @@ C   0.000000000000       0.000000000000       0.625265
 
     orbsym_ID, orbsym = Util_Mole.get_orbsym(mol, my_scf.mo_coeff)
 
-    # print([i for i, x in enumerate(orbsym_ID) if x is 2])
-    # print([i for i, x in enumerate(orbsym_ID) if x is 7])
-    # print([i for i, x in enumerate(orbsym_ID) if x is 50])
-    # print([i for i, x in enumerate(orbsym_ID) if x is 55])
+    print(orbsym_ID)
+    print(orbsym)
 
     basis_trans, Lz, parity = get_symmetry_adapted_basis_Dooh(
         mol, my_scf.mo_coeff)
@@ -503,45 +508,39 @@ C   0.000000000000       0.000000000000       0.625265
     print(Lz)
     print(parity)
 
-    h5e = reduce(numpy.dot, (my_scf.mo_coeff.T,
+    print(basis_trans)
+
+    h1e = reduce(numpy.dot, (my_scf.mo_coeff.T,
                  my_scf.get_hcore(), my_scf.mo_coeff))
 
     for i in range(mol.nao):
         for j in range(mol.nao):
-            if abs(h5e[i, j]) > 1e-10:
-                print(i, j, h5e[i, j])
+            if abs(h1e[i, j]) > 1e-10:
+                print(i, j, h1e[i, j])
 
-    h5e_adapted = reduce(numpy.dot, (basis_trans.H,
-                                     h5e, basis_trans))
+    h1e_adapted = reduce(numpy.dot, (basis_trans.H,
+                                     h1e, basis_trans))
 
     for i in range(mol.nao):
         for j in range(mol.nao):
-            if abs(h5e_adapted[i, j]) > 1e-10:
-                print(i, j, h5e_adapted[i, j])
+            if abs(h1e_adapted[i, j]) > 1e-10:
+                print(i, j, h1e_adapted[i, j], Lz[i], Lz[j], parity[i], parity[j])
+                print(i, j, h1e[i,j])
+                assert(Lz[i] == Lz[j])
+                assert(parity[i] == parity[j])
 
     int2e_full = pyscf.ao2mo.full(
         eri_or_mol=mol, mo_coeff=my_scf.mo_coeff, aosym='1').reshape((mol.nao, mol.nao, mol.nao, mol.nao))
-
-    # for i in range(mol.nao):
-    #     for j in range(mol.nao):
-    #         for k in range(mol.nao):
-    #             for l in range(mol.nao):
-    #                 if abs(int2e_full[i, j, k, l]) > 1e-10:
-    #                     pass
-    #                     # print(i, j, k, l, int2e_full[i, j, k, l])
 
     print(int2e_full.shape)
 
     # (1*1|2*2)
 
-    # int2e_full = numpy.einsum("ijkl,ip->pjkl", int2e_full, basis_trans.conj())
-    # int2e_full = numpy.einsum("pjkl,jq->pqkl", int2e_full, basis_trans.conj())
-    # int2e_full = numpy.einsum("pqkl,kr->pqrl", int2e_full, basis_trans)
-    # int2e_full = numpy.einsum("pqrl,ls->pqrs", int2e_full, basis_trans)
     int2e_full = numpy.einsum("ijkl,ip->pjkl", int2e_full, basis_trans.conj())
     int2e_full = numpy.einsum("pjkl,jq->pqkl", int2e_full, basis_trans)
     int2e_full = numpy.einsum("pqkl,kr->pqrl", int2e_full, basis_trans.conj())
     int2e_full = numpy.einsum("pqrl,ls->pqrs", int2e_full, basis_trans)
+
     # print(int2e_full)
 
     for i in range(mol.nao):
@@ -549,12 +548,47 @@ C   0.000000000000       0.000000000000       0.625265
             for k in range(mol.nao):
                 for l in range(mol.nao):
                     if abs(int2e_full[i, j, k, l]) > 1e-10:
-                        # print(i, j, k, l,
-                        #       int2e_full[i, j, k, l].real)
                         # real integrals
                         assert(abs(int2e_full[i, j, k, l].imag) < 1e-10)
                         assert(abs(Lz[i]+Lz[k]-Lz[j]-Lz[l])
                                < 1e-10)  # conservation of Lz
+                        assert(parity[i]*parity[j]*parity[k]*parity[l]==1)
 
-    # print(h5e_adapted)
-    # print(numpy.dot(basis_trans.H, basis_trans))
+    int2e_full = int2e_full.real
+    h1e_adapted = h1e_adapted.real
+    energy_core = mol.get_enuc()
+
+    tools.fcidump.from_integrals(filename="FCIDUMP_C2",
+                                 h1e=h1e_adapted,
+                                 h2e=int2e_full,
+                                 nuc=energy_core,
+                                 nmo=my_scf.mo_coeff.shape[1],
+                                 nelec=mol.nelectron, 
+                                 tol=1e-10,
+                                 orbsym=orbsym_ID)
+    
+    filename = "FCIDUMP_C2_FULL"
+    nmo = my_scf.mo_coeff.shape[1]
+    nelec = mol.nelectron
+    ms = 0
+    tol = 1e-10
+    nuc = energy_core
+    float_format = tools.fcidump.DEFAULT_FLOAT_FORMAT
+    with open(filename, 'w') as fout:
+        tools.fcidump.write_head(fout, nmo, nelec, ms, orbsym_ID)
+        output_format = float_format + ' %4d %4d %4d %4d\n'
+        for i in range(nmo):
+            for j in range(i+1):
+                for k in range(i+1):
+                    if i>k:
+                        for l in range(i+1):
+                            if abs(int2e_full[i][j][k][l]) > tol:
+                                fout.write(output_format % (int2e_full[i][j][k][l], i+1, j+1, k+1, l+1))
+                    else:
+                        for l in range(j+1):
+                            if abs(int2e_full[i][j][k][l]) > tol:
+                                fout.write(output_format % (int2e_full[i][j][k][l], i+1, j+1, k+1, l+1))
+
+        tools.fcidump.write_hcore(fout, h1e, nmo, tol=tol, float_format=float_format)
+        output_format = float_format + '  0  0  0  0\n'
+        fout.write(output_format % nuc)
