@@ -1,7 +1,7 @@
 import pyscf
 import numpy
 import Util_Math
-from pyscf.symm.Dmatrix import *
+# from pyscf.symm.Dmatrix import *
 
 
 def get_orbsym(mol, mocoeff):
@@ -105,16 +105,16 @@ def get_mol_geometric_center(mol):
     return res/mol.natm
 
 
-def get_bas_rotate_matrix(mol, alpha, beta, gamma):
-    res = numpy.zeros((mol.nao, mol.nao), dtype=numpy.float64)
-    loc = 0
-    for i in range(mol.nbas):
-        l = mol.bas_angular(i)
-        dmat = Dmatrix(l, alpha, beta, gamma, reorder_p=True)
-        for _ in range(mol.bas_nctr(i)):
-            res[loc:loc+2*l+1, loc:loc+2*l + 1] = dmat
-            loc += 2*l+1
-    return numpy.matrix(res)
+# def get_bas_rotate_matrix(mol, alpha, beta, gamma):
+#     res = numpy.zeros((mol.nao, mol.nao), dtype=numpy.float64)
+#     loc = 0
+#     for i in range(mol.nbas):
+#         l = mol.bas_angular(i)
+#         dmat = Dmatrix(l, alpha, beta, gamma, reorder_p=True)
+#         for _ in range(mol.bas_nctr(i)):
+#             res[loc:loc+2*l+1, loc:loc+2*l + 1] = dmat
+#             loc += 2*l+1
+#     return numpy.matrix(res)
 
 
 # local gauge problem 

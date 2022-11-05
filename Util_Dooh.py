@@ -479,6 +479,57 @@ def symmetrize_rdm2(orbsym_ID, rdm2, begin_orb, end_orb, xy_basis=False):
 
     return rdm2_tmp.real
 
+def FCIDUMP_Dooh(mol, my_scf, filename):
+    orbsym_ID, _ = Util_Mole.get_orbsym(mol, my_scf.mo_coeff)
+    basis_trans, _, _ = get_symmetry_adapted_basis_Dooh(
+        mol, my_scf.mo_coeff)
+    
+    # construct h1e and h2e
+
+    h1e = reduce(numpy.dot, (my_scf.mo_coeff.T,
+                 my_scf.get_hcore(), my_scf.mo_coeff))
+    
+    h1e_adapted = reduce(numpy.dot, (basis_trans.H,
+                                     h1e, basis_trans))
+    
+    int2e_full = pyscf.ao2mo.full(
+        eri_or_mol=mol, mo_coeff=my_scf.mo_coeff, aosym='1').reshape((mol.nao, mol.nao, mol.nao, mol.nao))
+
+    int2e_full = numpy.einsum("ijkl,ip->pjkl", int2e_full, basis_trans.conj())
+    int2e_full = numpy.einsum("pjkl,jq->pqkl", int2e_full, basis_trans)
+    int2e_full = numpy.einsum("pqkl,kr->pqrl", int2e_full, basis_trans.conj())
+    int2e_full = numpy.einsum("pqrl,ls->pqrs", int2e_full, basis_trans)
+
+    int2e_full = int2e_full.real
+    h1e_adapted = h1e_adapted.real
+    energy_core = mol.get_enuc()
+    
+    nmo = my_scf.mo_coeff.shape[1]
+    nelec = mol.nelectron
+    ms = 0
+    tol = 1e-10
+    nuc = energy_core
+    float_format = tools.fcidump.DEFAULT_FLOAT_FORMAT
+
+    with open(filename, 'w') as fout: # 4-fold symmetry
+        tools.fcidump.write_head(fout, nmo, nelec, ms, orbsym_ID)
+        output_format = float_format + ' %4d %4d %4d %4d\n'
+        for i in range(nmo):
+            for j in range(i+1):
+                for k in range(i+1):
+                    if i>k:
+                        for l in range(i+1):
+                            if abs(int2e_full[i][j][k][l]) > tol:
+                                fout.write(output_format % (int2e_full[i][j][k][l], i+1, j+1, k+1, l+1))
+                    else:
+                        for l in range(j+1):
+                            if abs(int2e_full[i][j][k][l]) > tol:
+                                fout.write(output_format % (int2e_full[i][j][k][l], i+1, j+1, k+1, l+1))
+
+        tools.fcidump.write_hcore(fout, h1e, nmo, tol=tol, float_format=float_format)
+        output_format = float_format + '  0  0  0  0\n'
+        fout.write(output_format % nuc)
+
 
 if __name__ == "__main__":
     mol = pyscf.gto.M(

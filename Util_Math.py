@@ -1,7 +1,7 @@
 import numpy
 from functools import reduce
-from pyscf.symm.Dmatrix import *
-from torch import cos_
+# from pyscf.symm.Dmatrix import *
+# from torch import cos_
 
 def _orthogonalize(_vec, _ovlp):
     # ndim = _vec.shape[0]
@@ -43,56 +43,43 @@ def get_rotation_matrix(theta, u):
 
 
 def get_euler_angle(rot_mat):
-    c2 = rot_mat[2, 2]
-    if abs(c2-1) > 1e-8 and abs(c2+1) > 1e-8:
-        s2s2 = 1 - c2 * c2
-        # c1c3 = -rot_mat[0, 2]*rot_mat[2, 0] / (1-s2s2)
-        # s1s3 = (rot_mat[1, 1] - c1c3) / -c2
-        # s2s2c1s3 = rot_mat[1,0] + c2*rot_mat[0,1]
-        # c1s3 = s2s2c1s3 / s2s2
-        # c2c3s1 = rot_mat[1,0] - c1s3
-        # c3s1 = c2c3s1/c2
-        
-        # we can set s2 > 0 
-        s2 = sqrt(s2s2)
-        c1 = rot_mat[0,2]/s2
-        s1 = rot_mat[1,2]/s2
-        c3 = -rot_mat[2,0]/s2
-        s3 = rot_mat[2,1]/s2
-
-        sin_psi = s1
-        sin_theta = s2
-        sin_phi = s3
-        cos_phi = c3
-        cos_theta = c2
-        cos_psi = c1
-        # print("sin_psi",sin_psi)
-        # print("sin_phi",sin_phi)
-        # print("sin_theta",sin_theta)
-        # print("cos_psi",cos_psi)
-        # print("cos_phi",cos_phi)
-        # print("cos_theta",cos_theta)
+    cos_theta = rot_mat[2, 2]
+    if abs(cos_theta-1) > 1e-8 and abs(cos_theta+1) > 1e-8:
+        sin_theta_square = 1 - cos_theta * cos_theta
+        sin_psi_sin_phi = rot_mat[0, 2]*rot_mat[2, 0] / (1-sin_theta_square)
+        cos_psi = (rot_mat[1, 1] + sin_psi_sin_phi) / cos_theta
+        cos_psi_sin_phi = -rot_mat[0, 2]*rot_mat[2, 1] / (1-sin_theta_square)
+        sin_psi = (rot_mat[0, 1]/cos_theta) - cos_psi_sin_phi
+        sin_theta = -rot_mat[2, 1] / cos_psi
+        sin_phi = rot_mat[0, 2]/sin_theta
+        cos_phi = rot_mat[1, 2]/sin_theta
+        print("sin_psi",sin_psi)
+        print("sin_phi",sin_phi)
+        print("sin_theta",sin_theta)
+        print("cos_psi",cos_psi)
+        print("cos_phi",cos_phi)
+        print("cos_theta",cos_theta)
         psi = numpy.arccos(cos_psi)
         theta = numpy.arccos(cos_theta)
         phi = numpy.arccos(cos_phi)
         if sin_psi < 0.0:
-            psi = 2 * numpy.pi - psi
+            psi += numpy.pi
         if sin_theta < 0.0:
-            theta = 2 * numpy.pi - theta
+            theta += numpy.pi
         if sin_phi < 0.0:
-            phi = 2 * numpy.pi - phi
-        return [psi, theta, phi] # [alpha,beta,gamma]
+            phi += numpy.pi
+        return [psi, theta, phi]
     else:
         phi = 0.0
         theta = 0.0
-        if abs(c2+1) <= 1e-8:
+        if abs(cos_theta+1) <= 1e-8:
             theta = numpy.pi
         cos_psi = rot_mat[0,0]
-        sin_psi = rot_mat[0,1]/c2
+        sin_psi = rot_mat[0,1]/cos_theta
         psi = numpy.arccos(cos_psi)
         if sin_psi < 0.0:
-            psi = 2 * numpy.pi - psi
-        return [psi, theta, phi] # [alpha,beta,gamma]
+            psi += numpy.pi
+        return [psi, theta, phi]
 
 def get_rotation_matrix_euler_angle_ZYZ(psi, theta, phi):
     return reduce(numpy.dot, (get_rotation_matrix(psi, [0, 0, 1]),
