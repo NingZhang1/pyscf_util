@@ -1,4 +1,4 @@
-from sys import ps1
+# from sys import ps1
 import numpy
 
 # dump file

@@ -290,6 +290,7 @@ class ChemBondAnalyzer:
 
         if xyz is not None:
             self._get_mol(xyz, charge, spin, basis, symmetry, print_verbose)
+            self.nocc = self.mol.nelectron//2
 
     # setter and getter
 
@@ -308,6 +309,7 @@ class ChemBondAnalyzer:
         if self._mol == None:
             self._mol = input_mol
             self.basis = input_mol.basis
+            self.nocc = self.mol.nelectron//2
         else:
             raise RuntimeError
 
@@ -392,9 +394,10 @@ class ChemBondAnalyzer:
             self.rohf = pyscf.scf.ROHF(self.mol)
             self.rohf.kernel()
             self.ovlp = self.mol.intor("int1e_ovlp")
-            self.nocc = numpy.sum(self.rohf.mo_occ > 0)
+            # self.nocc = numpy.sum(self.rohf.mo_occ > 0)
             self.canonical_mo_occ = self.rohf.mo_coeff[:, :self.nocc]
             self.loc_mo = lo.Boys(self.mol, self.canonical_mo_occ).kernel()
+            # self.loc_mo = lo.PM(self.mol, self.canonical_mo_occ).kernel()
 
             self._get_atom_basis_for_mol()
 
@@ -471,7 +474,8 @@ class ChemBondAnalyzer:
                     self.bond_graph[res[1],res[0]] += 1
                 else:
                     print("fatal error")
-                    raise RuntimeError
+                    # raise RuntimeError
+                    return None
         return self.bond_graph
 
 

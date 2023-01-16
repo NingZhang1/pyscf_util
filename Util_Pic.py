@@ -24,3 +24,22 @@ def draw_heatmap(mat, column, indx, vmax=100, vmin=0, x_label="orbital", y_label
     ax.set_ylabel(y_label, fontsize=18)
     ax.set_xlabel(x_label, fontsize=18)
     plt.show()
+
+def draw_extra_pic(x: list,
+                   y: list,
+                   legend: list,
+                   line_prop: list,
+                   xlabel: str = '$E_{pt}^{(2)}/E_H$',
+                   ylabel: str = '$E_{tot}/E_H$',
+                   title=""):
+    plt.figure(figsize=(16, 9))
+    for id, x in enumerate(x):
+        plt.plot(x, y[id], marker=line_prop[id]['marker'], markersize=line_prop[id]
+                 ['markersize'], linewidth=line_prop[id]['linewidth'], label=legend[id])
+    plt.xlabel(xlabel, fontsize=18)
+    plt.ylabel(ylabel, fontsize=18)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
+    plt.title(title, fontsize=18)
+    plt.legend(fontsize=18)
+    plt.show()

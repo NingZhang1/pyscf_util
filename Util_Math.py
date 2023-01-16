@@ -1,7 +1,7 @@
 import numpy
 from functools import reduce
-from pyscf.symm.Dmatrix import *
-from torch import cos_
+# from pyscf.symm.Dmatrix import *
+# from torch import cos_
 
 def _orthogonalize(_vec, _ovlp):
     # ndim = _vec.shape[0]

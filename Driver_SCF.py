@@ -74,6 +74,8 @@ def Analysis_SCF(mol, my_hf):
     my_hf.analyze()
     print("------------------------------     END     ------------------------------------")
 
+# not finished yet
+
 
 def Run_MCSCF(_mol, _rohf, _nelecas, _ncas,
               _frozen=None,
