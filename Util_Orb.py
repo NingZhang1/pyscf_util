@@ -815,7 +815,7 @@ def _construct_orb_comp_analysis(mol, atm_bas_info, with_distinct_atm=False):
             for key in atm_bas_info[atm].keys():
                 if key not in ["nao", "cmoao", "basis"]:
                     Res["%s.%s" % (atm, key)] = _construct_atm_bas(
-                        mol, atm_bas_info, ["%s.%s" % (atm, key)], True)
+                        mol, atm_bas_info, ["%s.%s" % (atm, key)], atm_indx = None, orthogonalize = True)
 
     return Res
 
@@ -945,7 +945,7 @@ if __name__ == "__main__":
         atm_bas[atom]["cmoao"] = Util_File.ReadIn_Cmoao(
             dirname+"/"+"%s_0_%s" % (atom, atm_bas[atom]["basis"]), atm_bas[atom]["nao"])
     
-    cmoao_fe2s2 = Util_File.ReadIn_Cmoao("Fe2S2_22_26_Init", 396)
+    cmoao_fe2s2 = Util_File.ReadIn_Cmoao("./Examples/Fe2S2_22_26_Init", 396)
 
     Analysis_Orb_Comp(Mol, cmoao_fe2s2, 0, Mol.nao,
                       atm_bas, tol=0.3, with_distinct_atm=False)
