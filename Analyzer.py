@@ -1,11 +1,10 @@
+import numpy
 import TEST_CONFIG
 
 import os
 from scipy import stats
 import matplotlib.pyplot as plt
 import numpy as np
-
-# iCI 输出文件分析 
 
 # 判断是不是 iCI　的输出文件
 
@@ -64,6 +63,73 @@ def Print_Rela_Pt_Info(filename):
     file.close()
 
 
+def Extract_NonRela_Selection_Info_New(filename: str, skip=1, macrocfg=True):
+
+    lines = None
+
+    try:
+        file = open(filename)
+        lines = file.readlines()
+        file.close()
+    except:
+        return None, 0, 0
+
+    Res = []
+
+    nstate = None
+    n_spacetype = None
+
+    for i in range(len(lines)):
+
+        if "BEGIN PRINT Important cfgspace INFO" in lines[i]:
+            begin = i+3
+            end = i+4
+            for j in range(begin+1, len(lines)):
+                if "Begin PRINT NONRELA CFGSPACE" in lines[j]:
+                    end = j-1
+                    break
+
+            nstate_tmp = 0
+            n_spacetype_tmp = 0
+
+            for j in range(begin, end):
+                if '|' not in lines[j]:
+                    break
+                res_str = lines[j].split("|")
+                res = [float(x) for x in res_str[:-1]]
+                tmp = res_str[-1].split(",")
+                # print(tmp)
+                # print(len(tmp))
+                res.extend([float(x) for x in tmp[:-1]])
+                restmp = [int(res[3]), int(res[4])]
+                restmp.extend([float(x) for x in res[5:]])
+                Res.append(restmp)
+                nstate_tmp += (len(restmp) - 2)
+                n_spacetype_tmp += 1
+
+            if nstate == None:
+                nstate = nstate_tmp
+            if n_spacetype == None:
+                n_spacetype = n_spacetype_tmp
+
+            assert (nstate_tmp == nstate)
+            assert (n_spacetype == n_spacetype_tmp)
+
+    Res = Res[skip:]
+
+    if macrocfg:
+        nblock = len(Res) // n_spacetype
+        assert (nblock % 2 == 0)
+        ResNew = []
+        for iblock in range(nblock):
+            if iblock % 2 == 1:
+                for j in range(n_spacetype):
+                    ResNew.append(Res[iblock*n_spacetype+j])
+        Res = ResNew
+
+    return Res, nstate, n_spacetype
+
+
 def Extract_NonRela_Pt_Info(filename: str, has_norm: bool):
     file = open(filename)
     lines = file.readlines()
@@ -90,17 +156,27 @@ def Extract_NonRela_Pt_Info(filename: str, has_norm: bool):
                         res = lines[k].split("/")
                         res = [float(x) for x in res]
                         Res.append(res)
-                        # print(res)
+                        print(res)
 
     return Res
 
 
 def Extract_NonRela_Pt_Info_New(filename: str):
-    file = open(filename)
-    lines = file.readlines()
-    file.close()
+
+    lines = None
+    try:
+        file = open(filename)
+        lines = file.readlines()
+        file.close()
+    except:
+        return None, False, False, 0
 
     Res = []
+
+    find_iCIPT2 = False
+    find_iCIext_PT2 = False
+
+    nstate = None
 
     for i in range(len(lines)):
         if "iCI_ENPT(2)_NonRela::Info" in lines[i]:
@@ -112,6 +188,13 @@ def Extract_NonRela_Pt_Info_New(filename: str):
                     break
             # print(begin,end)
 
+            find_iCIPT2 = True
+            restmp = None
+            ncsf = 0
+            ncfg = 0
+
+            nstate_tmp = 0
+
             for j in range(begin, end):
                 if '_______________________________________________________________________________________________' in lines[j]:
                     for k in range(j+3, end):
@@ -119,12 +202,30 @@ def Extract_NonRela_Pt_Info_New(filename: str):
                             break
                         # print(lines[k].split("/"))
                         res = lines[k].split("|")
-                        res = [float(x) for x in res]
-                        restmp = [int(res[0]), int(res[1])]
-                        restmp.extend([float(x) for x in res[2:]])
+                        # res = [float(x) for x in res]
+                        # restmp = [int(res[0]), int(res[1])]
+                        try:
+                            res = [float(x) for x in res]
+                            restmp = [int(res[0]), int(res[1])]
+                            ncsf = int(res[1])
+                            ncfg = int(res[0])
+                            restmp.extend([float(x) for x in res[2:]])
+
+                        except:
+                            # res = [0, 0]
+                            # res.extend([float(x) for x in res[2:]])
+                            restmp = [ncfg, ncsf]
+                            restmp.extend([float(x) for x in res[2:]])
+
                         Res.append(restmp)
+                        nstate_tmp += 1
                         # print(res)
                     break
+
+            if nstate == None:
+                nstate = nstate_tmp
+
+            assert (nstate_tmp == nstate)
 
         if "iCI_ext_ENPT2_NonRela::Info" in lines[i]:
             begin = i
@@ -135,6 +236,11 @@ def Extract_NonRela_Pt_Info_New(filename: str):
                     break
             # print(begin,end)
 
+            find_iCIext_PT2 = True
+            restmp = None
+            ncsf = 0
+            ncfg = 0
+
             for j in range(begin, end):
                 if '_______________________________________________________________________________________________' in lines[j]:
                     for k in range(j+3, end):
@@ -142,14 +248,26 @@ def Extract_NonRela_Pt_Info_New(filename: str):
                             break
                         # print(lines[k].split("/"))
                         res = lines[k].split("|")
-                        res = [float(x) for x in res]
-                        restmp = [int(res[0]), int(res[1])]
-                        restmp.extend([float(x) for x in res[2:]])
+                        # res = [float(x) for x in res]
+
+                        try:
+                            res = [float(x) for x in res]
+                            restmp = [int(res[0]), int(res[1])]
+                            ncsf = int(res[1])
+                            ncfg = int(res[0])
+                            restmp.extend([float(x) for x in res[2:]])
+
+                        except:
+                            # res = [0, 0]
+                            # res.extend([float(x) for x in res[2:]])
+                            restmp = [ncfg, ncsf]
+                            restmp.extend([float(x) for x in res[2:]])
+
                         Res.append(restmp)
                         # print(res)
                     break
 
-    return Res
+    return Res, find_iCIPT2, find_iCIext_PT2, nstate
 
 
 # extract info
@@ -319,7 +437,9 @@ def LinearRegression_EstimateError(x, y, print_verbose=False):
         Sxy = Sxy + (x[i]-Mean_x) * (y[i]-Mean_y)
     N = len(x)
     a = stats.linregress(x, y)
-    sigma = (1.0/(N-2))*(Syy - a[0] * Sxy)
+    sigma = 0.0
+    if N > 2:
+        sigma = (1.0/(N-2))*(Syy - a[0] * Sxy)
     sigma = np.sqrt(sigma)
     # print(sigma)
     # print(t_25[N-2])
@@ -331,7 +451,8 @@ def LinearRegression_EstimateError(x, y, print_verbose=False):
         print("R Value           : %16.8e\n" % a[2])
         print("R Square          : %16.8e\n" % a[2]**2)
         print("0.95 Interval x=0 : %16.8f +- %16.8e\n" % (a[1], b))
-    return [a[0], a[1], a[2]**2, (a[1]-y[-1])*10**6, b, a[2]**2]
+    # return [a[0], a[1], a[2]**2, (a[1]-y[-1])*10**6, b, a[2]**2]
+    return [a[0], a[1], a[2], b/t_25[N-2]]
 
 
 def draw_extra_pic(x: list,
@@ -353,21 +474,215 @@ def draw_extra_pic(x: list,
     plt.legend(fontsize=18)
     plt.show()
 
-def draw_extra_pic(x: list,
-                   y: list,
-                   legend: list,
-                   line_prop: list,
-                   xlabel: str = '$E_{pt}^{(2)}/E_H$',
-                   ylabel: str = 'E_{tot}/E_H',
-                   title=""):
-    plt.figure(figsize=(16, 9))
-    for id, x in enumerate(x):
-        plt.plot(x, y[id], marker=line_prop[id]['marker'], markersize=line_prop[id]
-                 ['markersize'], linewidth=line_prop[id]['linewidth'], label=legend[id])
-    plt.xlabel(xlabel, fontsize=18)
-    plt.ylabel(ylabel, fontsize=18)
-    plt.xticks(fontsize=18)
-    plt.yticks(fontsize=18)
-    plt.title(title, fontsize=18)
-    plt.legend(fontsize=18)
-    plt.show()
+
+# Driver for analysis
+
+
+def _generate_empty_res_():
+    Res = {
+        'ncsf': None,
+        'ncfg': None,
+        'eiCI': None,
+        'ept': None,
+        'ept_ext': None,
+        'ept_norm': None,
+        'ept_ext_norm': None,
+    }
+    return Res
+
+
+def _generate_empty_res(nroot):
+    Res = {'Heff_Rela': None, }
+    for i in range(nroot):
+        Res["root_%d" % (i)] = _generate_empty_res_()
+        for key in Res["root_%d" % (i)].keys():
+            Res["root_%d" % (i)][key] = []
+    return Res
+
+
+def _extract_Heff_Rela(dirname, filename, complex=False):
+
+    filepath = os.path.join(dirname, filename)
+    Res = []
+    lines = None
+
+    try:
+        file = open(filepath)
+        lines = file.readlines()
+        file.close()
+    except:
+        return None
+
+    for i in range(len(lines)):
+        if "The effective Hamiltonian matrix elements of" in lines[i]:
+            begin = i
+            end = i+1
+            for j in range(begin+1, len(lines)):
+                if "-------------------------------------------------------" in lines[j]:
+                    end = j
+                    break
+            if end == (i+1):
+                Res.append(None)
+            else:
+                Heff = []
+                for j in range(begin, end):
+                    if "Row" in lines[j]:
+                        file_str = lines[j].split(" ")
+                        # print(file_str)
+                        tmp = []
+                        for data in file_str[:-1]:
+                            try:
+                                tmp.append(float(data))
+                            except:
+                                pass
+                        tmp.append(float(file_str[-1][:-1]))
+                        tmp = tmp[1:]
+                        tmp_complex = []
+                        # print(tmp)
+                        if complex:
+                            for k in range(len(tmp)//2):
+                                tmp_complex.append(
+                                    numpy.complex(tmp[2*k], tmp[2*k+1]))
+                            # print(k, numpy.complex(tmp[2*k], tmp[2*k+1]))
+                            Heff.append(tmp_complex)
+                        else:
+                            Heff.append(tmp)
+                Heff = numpy.array(Heff)
+                # print(Heff.shape)
+                for i in range(Heff.shape[1]):
+                    Heff[i, i] = 0.0
+                Res.append(Heff)
+
+    return Res
+
+
+def load_data_diff_file(dirname, file_FORMAT, id_list,
+                        do_extpt=False, do_pt_with_norm=True):
+
+    Res = None
+
+    for id in id_list:
+        filepath = os.path.join(dirname, file_FORMAT % (id))
+        ResTmp, find_pt, find_expt, nstate = Extract_NonRela_Pt_Info_New(
+            filepath)
+
+        if ResTmp == None:
+            find_expt = do_extpt
+            continue
+
+        assert (do_extpt == find_expt)
+
+        if Res == None:
+            Res = _generate_empty_res(nstate)
+
+        if find_expt:
+            for id, data in enumerate(ResTmp):
+                root_id = id % nstate
+                batch_id = id // (nstate)
+                if batch_id % 2 == 0:
+                    Res["root_%d" % (root_id)]["ncsf"].append(data[1])
+                    Res["root_%d" % (root_id)]["ncfg"].append(data[0])
+                    Res["root_%d" % (root_id)]["eiCI"].append(data[2])
+                    Res["root_%d" % (root_id)]["ept"].append(data[3])
+                    if do_pt_with_norm:
+                        Res["root_%d" % (root_id)]["ept_norm"].append(data[5])
+                if batch_id % 2 == 1:
+                    Res["root_%d" % (root_id)]["ept_ext"].append(data[3])
+                    if do_pt_with_norm:
+                        Res["root_%d" %
+                            (root_id)]["ept_ext_norm"].append(data[4])
+        else:
+            for id, data in enumerate(ResTmp):
+                root_id = id % nstate
+                batch_id = id // (nstate)
+                Res["root_%d" % (root_id)]["ncsf"].append(data[1])
+                Res["root_%d" % (root_id)]["ncfg"].append(data[0])
+                Res["root_%d" % (root_id)]["eiCI"].append(data[2])
+                Res["root_%d" % (root_id)]["ept"].append(data[3])
+                Res["root_%d" % (root_id)]["ept_norm"].append(data[5])
+
+    return Res
+
+
+def load_data_same_file(dirname, filename, do_extpt=False, do_pt_with_norm=True):
+
+    filepath = os.path.join(dirname, filename)
+    ResTmp, find_pt, find_expt, nstate = Extract_NonRela_Pt_Info_New(
+        filepath)
+
+    if ResTmp == None:
+        return None
+
+    assert (find_pt)
+    assert (do_extpt == find_expt)
+
+    Res = _generate_empty_res(nstate)
+
+    if find_expt:
+        for id, data in enumerate(ResTmp):
+            root_id = id % nstate
+            batch_id = id // (nstate)
+            if batch_id % 2 == 0:
+                Res["root_%d" % (root_id)]["ncsf"].append(data[1])
+                Res["root_%d" % (root_id)]["ncfg"].append(data[0])
+                Res["root_%d" % (root_id)]["eiCI"].append(data[2])
+                Res["root_%d" % (root_id)]["ept"].append(data[3])
+                if do_pt_with_norm:
+                    Res["root_%d" % (root_id)]["ept_norm"].append(data[5])
+            if batch_id % 2 == 1:
+                Res["root_%d" % (root_id)]["ept_ext"].append(data[3])
+                if do_pt_with_norm:
+                    Res["root_%d" %
+                        (root_id)]["ept_ext_norm"].append(data[4])
+    else:
+        for id, data in enumerate(ResTmp):
+            root_id = id % nstate
+            batch_id = id // (nstate)
+            Res["root_%d" % (root_id)]["ncsf"].append(data[1])
+            Res["root_%d" % (root_id)]["ncfg"].append(data[0])
+            Res["root_%d" % (root_id)]["eiCI"].append(data[2])
+            Res["root_%d" % (root_id)]["ept"].append(data[3])
+            if do_pt_with_norm:
+                Res["root_%d" % (root_id)]["ept_norm"].append(data[5])
+
+    return Res
+
+
+def load_data_selection_info(dirname, filename, skip=1, macrocfg=False):
+
+    filepath = os.path.join(dirname, filename)
+    ResTmp, nstate, nspace_type = Extract_NonRela_Selection_Info_New(
+        filepath, skip, macrocfg)
+
+    if ResTmp == None:
+        return None
+
+    Res = _generate_empty_res(nstate)
+
+    root_id = None
+    batch_id = None
+
+    for id, data in enumerate(ResTmp):
+        # space_id = id % nspace_type
+
+        if batch_id == None:
+            batch_id = id // nspace_type
+            root_id = 0
+
+        if batch_id != (id // nspace_type):
+            root_id = 0
+            batch_id = id // nspace_type
+
+        # root_id = id % nstate
+        # batch_id = id // (nstate)
+
+        nstate_tmp = len(data) - 2
+        for id in range(nstate_tmp):
+            # Res["root_%d" % (root_id)]["ncsf"].append(data[1])
+            # Res["root_%d" % (root_id)]["ncfg"].append(data[0])
+            Res["root_%d" % (root_id)]["ncsf"].append(data[0])
+            Res["root_%d" % (root_id)]["ncfg"].append(data[1])
+            Res["root_%d" % (root_id)]["eiCI"].append(data[id+2])
+            root_id += 1
+
+    return Res

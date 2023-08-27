@@ -1,8 +1,6 @@
 import pyscf
 import Driver_SCF
 
-# WARNNING: USELESS
-
 Atom_Info = {
     'C': {
         "charge_fake": 2,

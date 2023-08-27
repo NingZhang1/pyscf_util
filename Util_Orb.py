@@ -382,6 +382,14 @@ Pair = {
     'IR7': None,
     'A1g': None,
     'A1u': None,
+    'Ag': None,
+    'Au': None,
+    'B1g': None,
+    'B1u': None,
+    'B2g': None,
+    'B2u': None,
+    'B3g': None,
+    'B3u': None,
     'E1gx': 'E1gy',
     'E1gy': 'E1gx',
     'E1uy': 'E1ux',
@@ -586,7 +594,7 @@ SO3_IREEP = {
 }
 
 
-def _diag_rdm1_SO3(mol, cmoao, rdm1, s=None):
+def _diag_rdm1_SO3(mol, cmoao, rdm1, s=None, reverse = True):
 
     orbsym = pyscf.symm.label_orb_symm(
         mol, mol.irrep_name, mol.symm_orb, cmoao)
@@ -615,13 +623,18 @@ def _diag_rdm1_SO3(mol, cmoao, rdm1, s=None):
 
         e11, h11 = numpy.linalg.eigh(rdm_tmp)
 
+        print(rdm_tmp)
+        print(e11)
+        print(h11)
+
         e = numpy.zeros(e11.shape)
         h = numpy.zeros(h11.shape)
-        for i in range(len(e11)):
-            e[i] = e11[len(e11)-1-i]
-            h[:, i] = h11[:, len(e11)-1-i]
-        e11 = e
-        h11 = h
+        if reverse:
+            for i in range(len(e11)):
+                e[i] = e11[len(e11)-1-i]
+                h[:, i] = h11[:, len(e11)-1-i]
+            e11 = e
+            h11 = h
 
         for i in range(0, len(SO3_IREEP[l])):
             indx2 = numpy.where(orbsym == SO3_IREEP[l][i])[0]
@@ -629,14 +642,16 @@ def _diag_rdm1_SO3(mol, cmoao, rdm1, s=None):
             for id2, irow in enumerate(indx2):
                 mo_trans[irow][indx2] = h11[id2, :]
 
+        print(mo_trans)
+
     return Occ, numpy.dot(cmoao, mo_trans)
 
 
-def Diag_Rdm1_with_Sym(mol, cmoao, rdm1, s=None):
+def Diag_Rdm1_with_Sym(mol, cmoao, rdm1, s=None, reverse = True):
     assert (cmoao.shape[1] == rdm1.shape[1])
 
     if mol.groupname == 'SO3':
-        return _diag_rdm1_SO3(mol, cmoao, rdm1, s)
+        return _diag_rdm1_SO3(mol, cmoao, rdm1, s, reverse)
 
     nmo = cmoao.shape[1]
     Occ = numpy.zeros(cmoao.shape[1])
@@ -656,13 +671,14 @@ def Diag_Rdm1_with_Sym(mol, cmoao, rdm1, s=None):
             rdm1_tmp0 = (rdm1_tmp1+rdm1_tmp2)/2
             e11, h11 = numpy.linalg.eigh(rdm1_tmp0)
 
-            e = numpy.zeros(e11.shape)
-            h = numpy.zeros(h11.shape)
-            for i in range(len(e11)):
-                e[i] = e11[len(e11)-1-i]
-                h[:, i] = h11[:, len(e11)-1-i]
-            e11 = e
-            h11 = h
+            if reverse:
+                e = numpy.zeros(e11.shape)
+                h = numpy.zeros(h11.shape)
+                for i in range(len(e11)):
+                    e[i] = e11[len(e11)-1-i]
+                    h[:, i] = h11[:, len(e11)-1-i]
+                e11 = e
+                h11 = h
 
             Occ[orb_id] = e11
             Occ[orb_id_pair] = e11
@@ -676,13 +692,14 @@ def Diag_Rdm1_with_Sym(mol, cmoao, rdm1, s=None):
             rdm1_tmp0 = rdm1_tmp0[orb_id, :]
             e11, h11 = numpy.linalg.eigh(rdm1_tmp0)
 
-            e = numpy.zeros(e11.shape)
-            h = numpy.zeros(h11.shape)
-            for i in range(len(e11)):
-                e[i] = e11[len(e11)-1-i]
-                h[:, i] = h11[:, len(e11)-1-i]
-            e11 = e
-            h11 = h
+            if reverse:
+                e = numpy.zeros(e11.shape)
+                h = numpy.zeros(h11.shape)
+                for i in range(len(e11)):
+                    e[i] = e11[len(e11)-1-i]
+                    h[:, i] = h11[:, len(e11)-1-i]
+                e11 = e
+                h11 = h
 
             Occ[orb_id] = e11
             for id2, irow in enumerate(orb_id):
@@ -722,7 +739,46 @@ def Diag_Rdm1_with_Sym_given_orbsym(orbsym, cmoao, rdm1):
 # 分析轨道成分
 
 
-# atm_indx is 1-BASED 
+# atm_indx is 1-BASED
+
+def _construct_atm_vir_bas(mol, atm_bas_info, atm_label:list, orthogonalize=False):
+    
+    # step1 get indx for each atm
+
+    atm_bas_loc = [0]
+    loc_tmp = 0
+    for i in range(mol.natm):
+        atm = mol.atom_pure_symbol(i)
+        loc_tmp += atm_bas_info[atm]["nao"]
+        atm_bas_loc.append(loc_tmp)
+
+    nbas = 0
+
+    atm_bas_begin_loc = []
+    atm_bas_end_loc = []
+
+    # step2 get indx
+
+    for atm in atm_label:
+        
+        atm_bas_begin_loc.append(atm_bas_loc[atm])
+        atm_bas_end_loc.append(atm_bas_loc[atm+1])
+        nbas += atm_bas_loc[atm+1] - atm_bas_loc[atm]
+
+    # step3 construct
+
+    Res = numpy.zeros((mol.nao, nbas))
+    loc_tmp = 0
+    for i in range(len(atm_bas_begin_loc)):
+        nbas_tmp = atm_bas_end_loc[i] - atm_bas_begin_loc[i]
+        Res[atm_bas_begin_loc[i]:atm_bas_end_loc[i], loc_tmp:loc_tmp+nbas_tmp] = numpy.identity(nbas_tmp)
+        loc_tmp += nbas_tmp
+
+
+    if orthogonalize:
+        Res = Util_Math._orthogonalize(Res, mol.intor("int1e_ovlp"))
+
+    return Res
 
 def _construct_atm_bas(mol, atm_bas_info, atm_label, atm_indx=None, orthogonalize=False):
 
@@ -815,139 +871,57 @@ def _construct_orb_comp_analysis(mol, atm_bas_info, with_distinct_atm=False):
             for key in atm_bas_info[atm].keys():
                 if key not in ["nao", "cmoao", "basis"]:
                     Res["%s.%s" % (atm, key)] = _construct_atm_bas(
-                        mol, atm_bas_info, ["%s.%s" % (atm, key)], atm_indx = None, orthogonalize = True)
+                        mol, atm_bas_info, ["%s.%s" % (atm, key)], True)
 
     return Res
 
 
-def Analysis_Orb_Comp(mol, cmoao, indx_begin, indx_end, atm_bas_info, tol = 0.1, with_distinct_atm=False):
+def Analysis_Orb_Comp(mol, cmoao, indx_begin, indx_end, atm_bas_info, tol = 0.1, with_distinct_atm=False, extract_given_atm = None, tol_extract=0.75, _print=True):
 
     ovlp = mol.intor("int1e_ovlp")
 
     orb_comp_analysis_bas = _construct_orb_comp_analysis(
         mol, atm_bas_info, with_distinct_atm)
+    
+    print(orb_comp_analysis_bas.keys())
+
+    Res = []
 
     for i in range(indx_begin, indx_end):
+
+        Res_tmp = {
+            "orbindx":i,
+            "key":None,
+        }
+
+        norm_res = 0.0
+
+        comp_wanted = 0.0
+
         for key in orb_comp_analysis_bas.keys():
             norm = numpy.linalg.norm(reduce(
                 numpy.dot, (cmoao[:, i:i+1].T, ovlp, orb_comp_analysis_bas[key])))
+            
+            if extract_given_atm is not None:
+                for given_atm in extract_given_atm:
+                    if given_atm in key:
+                        comp_wanted += norm * norm
+                    break
+
             if norm > tol:
-                print("orbindx %3d Comp %s Contr %15.8f" % (i, key, norm*norm))
-        print("--------------------------------------")
-
-import Util_File
-
-if __name__ == "__main__":
-
-
-    atm_bas = {
-    "H": {
-        "1s": [0],
-        "2s": [1],
-        "2p": [2, 3, 4],
-        "nao": 5,
-        "basis": "ccpvdz-dk",
-        "cmoao": None,
-    },
-    "C": {
-        "1s": [0],
-        "2s": [1],
-        "2p": [2, 3, 4],
-        "3p": [5, 6, 7],
-        "3s": [8],
-        "3d": [9, 10, 11, 12, 13],
-        "nao": 14,
-        "basis": "ccpvdz-dk",
-        "cmoao": None,
-    },
-    "S": {
-        "1s": [0],
-        "2s": [1],
-        "2p": [2, 3, 4],
-        "3s": [5],
-        "3p": [6, 7, 8],
-        "4p": [9, 10, 11],
-        "4s": [12],
-        "3d": [13, 14, 15, 16, 17],
-        "5p": [18, 19, 20],
-        "5s": [21, ],
-        "4d": [22, 23, 24, 25, 26],
-        "nao": 27,
-        "basis": "aug-ccpvdz-dk",
-        "cmoao": None,
-    },
-    "Fe": {
-        "1s": [0],
-        "2s": [1],
-        "2p": [2, 3, 4],
-        "3s": [5],
-        "3p": [6, 7, 8],
-        "4s": [9],
-        "3d": [10, 11, 12, 13, 14],
-        "4p": [15, 16, 17],
-        "5s": [18],
-        "4d": [19, 20, 21, 22, 23],
-        "5p": [24, 25, 26],
-        "6s": [27],
-        "6p": [28, 29, 30],
-        "5d": [31, 32, 33, 34, 35],
-        "4f": [36, 37, 38, 39, 40, 41, 42],
-        "7p": [43, 44, 45],
-        "7s": [46],
-        "6d": [47, 48, 49, 50, 51],
-        "5f": [52, 53, 54, 55, 56, 57, 58],
-        "nao": 59,
-        "basis": "aug-ccpvdz-dk",
-        "cmoao": None,
-    },
-}
-
-    Mol = pyscf.gto.Mole()
-    Mol.atom = '''
-    Fe  0.000000  0.000000  1.312783
-    Fe  0.000000  0.000000 -1.312783
-    S   0.757448 -1.576802  0.000000
-    S  -0.757448  1.576802  0.000000
-    S   1.583457  0.881621  2.761494
-    S  -1.583457 -0.881621  2.761494
-    S  -1.583457 -0.881621 -2.761494
-    S   1.583457  0.881621 -2.761494
-    C  -2.006854  0.653551  3.669027
-    C   2.006854 -0.653551  3.669027
-    C   2.006854 -0.653551 -3.669027
-    C  -2.006854  0.653551 -3.669027
-    H  -2.501125  1.369319  2.995471
-    H   2.501125 -1.369319  2.995471
-    H   2.501125 -1.369319 -2.995471
-    H  -2.501125  1.369319 -2.995471
-    H  -2.683553  0.421356  4.508610
-    H   2.683553 -0.421356  4.508610
-    H   2.683553 -0.421356 -4.508610
-    H  -2.683553  0.421356 -4.508610
-    H  -1.086873  1.121991  4.050762
-    H   1.086873 -1.121991  4.050762
-    H   1.086873 -1.121991 -4.050762
-    H  -1.086873  1.121991 -4.050762
-        '''
-    Mol.basis = {'Fe': 'aug-ccpvdz-dk', 'S': 'aug-ccpvdz-dk',
-                 'C': 'ccpvdz-dk', 'H': 'ccpvdz-dk'}
-    Mol.symmetry = "C1"
-    Mol.spin = 10
-    Mol.charge = -2
-    Mol.verbose = 4
-    Mol.unit = 'angstorm'
-    Mol.build()
-
-
-    dirname = "./Examples"
-
-    for atom in ["H", "C", "S", "Fe"]:
-        atm_bas[atom]["cmoao"] = Util_File.ReadIn_Cmoao(
-            dirname+"/"+"%s_0_%s" % (atom, atm_bas[atom]["basis"]), atm_bas[atom]["nao"])
+                if _print:
+                    print("orbindx %3d Comp %s Contr %15.8f" % (i, key, norm*norm))
+                if norm > norm_res:
+                    norm_res = norm
+                    Res_tmp["key"] = key
+        
+        if extract_given_atm is not None:
+            if comp_wanted > tol_extract:
+                Res.append(Res_tmp)
+        else:
+            Res.append(Res_tmp)
+        
+        if _print:
+            print("--------------------------------------")
     
-    cmoao_fe2s2 = Util_File.ReadIn_Cmoao("./Examples/Fe2S2_22_26_Init", 396)
-
-    Analysis_Orb_Comp(Mol, cmoao_fe2s2, 0, Mol.nao,
-                      atm_bas, tol=0.3, with_distinct_atm=False)
-    Analysis_Orb_Comp(Mol, cmoao_fe2s2, 0, Mol.nao,
-                      atm_bas, tol=0.3, with_distinct_atm=True)
+    return Res

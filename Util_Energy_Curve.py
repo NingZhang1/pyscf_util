@@ -3,7 +3,6 @@ import numpy
 import Util_Math
 import pyscf_util
 
-# NOT FINISHED YET
 
 def _Generate_InputFile_SiCI(inputfilename,
                              Segment,

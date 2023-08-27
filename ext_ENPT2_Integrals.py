@@ -8,7 +8,6 @@ import Util_Orb
 import tempfile
 import h5py
 
-# dump integrals for ext-iCIPT2
 
 def _combine2(a, b):  # 8-fold 0-based
     if a > b:
@@ -21,13 +20,13 @@ def _combine4(a, b, c, d):  # 8-fold 0-based
     return _combine2(_combine2(a, b), _combine2(c, d))
 
 
-def dump_FCIDUMP_extPT_outcore(mol, scf, mo_coeff, nfzc, nact, nvir, filename="FCIDUMP"):
+def dump_FCIDUMP_extPT_outcore(mol, scf, mo_coeff, nfzc, nact, nvir, filename="FCIDUMP", tol = 1e-8):
     nmo = nfzc+nact+nvir
     assert (nmo <= mol.nao)
     # nmo = my_scf.mo_coeff.shape[1]
     nelec = mol.nelectron
     ms = 0
-    tol = 1e-10
+    # tol = 1e-10
     nuc = mol.get_enuc()
     float_format = tools.fcidump.DEFAULT_FLOAT_FORMAT
 
@@ -152,19 +151,22 @@ def dump_FCIDUMP_extPT_outcore(mol, scf, mo_coeff, nfzc, nact, nvir, filename="F
         fout.write(output_format % nuc)
 
 
-def dump_FCIDUMP_extPT(mol, scf, mo_coeff, nfzc, nact, nvir, filename="FCIDUMP"):
+def dump_FCIDUMP_extPT(mol, scf, mo_coeff, nfzc, nact, nvir, filename="FCIDUMP", tol = 1e-8):
     nmo = nfzc+nact+nvir
     assert (nmo <= mol.nao)
     # nmo = my_scf.mo_coeff.shape[1]
     nelec = mol.nelectron
     ms = 0
-    tol = 1e-10
+    # tol = 1e-10
     nuc = mol.get_enuc()
     float_format = tools.fcidump.DEFAULT_FLOAT_FORMAT
 
     h1e = reduce(numpy.dot, (mo_coeff.T,
                  scf.get_hcore(), mo_coeff))
     h1e = h1e[:nmo, :nmo]
+
+    # print(h1e)
+
     int2e_full = pyscf.ao2mo.full(
         eri_or_mol=mol, mo_coeff=mo_coeff[:, :nmo], aosym='4')
     int2e_full = pyscf.ao2mo.restore(8, int2e_full.copy(), nmo)

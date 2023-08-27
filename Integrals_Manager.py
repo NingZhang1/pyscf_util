@@ -35,8 +35,11 @@ def dump_heff_casci(_mol, _mcscf, _core_coeff, _mocoeff, _filename='FCIDUMP'):
     OrbSym = pyscf.symm.label_orb_symm(_mol, _mol.irrep_name, _mol.symm_orb,
                                        _mocoeff)
     OrbSymID = [pyscf.symm.irrep_name2id(_mol.groupname, x) for x in OrbSym]
-    # DUMP
-    tools.fcidump.from_integrals(filename=_filename,
+    # DUMP 
+    if _filename == None:
+        return int1e_res, int2e_res, energy_core, _mocoeff.shape[1], _mol.nelectron - 2 *_core_coeff.shape[1], OrbSymID
+    else:
+        tools.fcidump.from_integrals(filename=_filename,
                                  h1e=int1e_res,
                                  h2e=int2e_res,
                                  nuc=energy_core,

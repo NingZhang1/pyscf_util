@@ -7,8 +7,6 @@ import numpy
 from pyscf.data import nist
 import copy
 
-# 生成 相对论积分 
-
 epsilon = numpy.zeros((3, 3, 3))
 epsilon[0][1][2] = 1.0
 epsilon[0][2][1] = -1.0
@@ -84,7 +82,7 @@ def get_X_R_dm_LL_LS_SS(_mol, _sfX2C, _cmoao, _dm1):
     return xmol, contr_coeff, X0, R0, dm1_LL, dm1_LS, dm1_SS
 
 
-def fetch_soc2e_SOMF_BP(_mol, _cmoao, _dm1):
+def fetch_soc2e_SOMF_BP(_mol, _cmoao, _dm1, _SOMF=True):
     nao = _mol.nao
     # if nao >= DO_SHELL_BY_SHELL_CRITERION:
     #     return fetch_soc2e_SOMF_BP_shell_by_shell(_mol, _cmoao, _dm1)
@@ -97,11 +95,13 @@ def fetch_soc2e_SOMF_BP(_mol, _cmoao, _dm1):
     # 2e part, Spin-Orbit Mean-Field, Eqn (10) -- (16)
     # hso2e = _mol.intor('int2e_p1vxp1').reshape(3, nao, nao, nao, nao)
     # SOMF
-    vj, vk, vk2 = pyscf.scf.jk.get_jk(_mol, [rdm1_atom, rdm1_atom, rdm1_atom], [
+    hSOMF_atom = _mol.intor('int1e_pnucxp', 3)
+    if _SOMF:
+        vj, vk, vk2 = pyscf.scf.jk.get_jk(_mol, [rdm1_atom, rdm1_atom, rdm1_atom], [
         'ijkl,kl->ij', 'ijkl,jk->il', 'ijkl,li->kj'], intor='int2e_p1vxp1', comp=3)
-    hSOMF_atom = vj - 1.5 * vk - 1.5 * vk2
+        hSOMF_atom += vj - 1.5 * vk - 1.5 * vk2
 
-    hSOMF_atom += _mol.intor('int1e_pnucxp', 3)
+    # hSOMF_atom += _mol.intor('int1e_pnucxp', 3)
 
     # Check AntiSymmetry
     for x in hSOMF_atom:
@@ -220,9 +220,9 @@ def fetch_X2C_soDKH1(_mol, _sfX2C, _cmoao, _dm1, _test=False, _get_1e=True, _get
 
         # print(g_LL.shape)
 
-        g_LL = numpy.einsum("lmn,mnab->lab", epsilon, g_LL) 
-        g_LS = numpy.einsum("lmn,mnab->lab", epsilon, g_LS) 
-        g_SS = numpy.einsum("lmn,mnab->lab", epsilon, g_SS) 
+        g_LL = numpy.einsum("lmn,mnab->lab", epsilon, g_LL)
+        g_LS = numpy.einsum("lmn,mnab->lab", epsilon, g_LS)
+        g_SS = numpy.einsum("lmn,mnab->lab", epsilon, g_SS)
 
         g_SL = numpy.asarray([-x.T for x in g_LS])
 
@@ -234,7 +234,7 @@ def fetch_X2C_soDKH1(_mol, _sfX2C, _cmoao, _dm1, _test=False, _get_1e=True, _get
         g_SS = numpy.asarray(
             [reduce(numpy.dot, (X0.T, x, X0)) for x in g_SS])
         # construct g
-        g = g_SS + g_SL + g_LS + g_LL                                                          
+        g = g_SS + g_SL + g_LS + g_LL
 
         for x in g:
             print("Check Antisymmetry in fetch_X2C_soDKH1 get 2e %e" %
