@@ -9,6 +9,76 @@ from functools import reduce
 from pyscf import lib
 from pyscf import tools
 
+import re
+
+
+def read(filename, verbose=True):
+    '''Parse FCIDUMP.  Return a dictionary to hold the integrals and
+    parameters with keys:  H1, H2, ECORE, NORB, NELEC, MS, ORBSYM, ISYM
+
+    Kwargs:
+        molpro_orbsym (bool): Whether the orbsym in the FCIDUMP file is in
+            Molpro orbsym convention as documented in
+            https://www.molpro.net/info/current/doc/manual/node36.html
+            In return, orbsym is converted to pyscf symmetry convention
+        verbose (bool): Whether to print debugging information
+    '''
+    if verbose:
+        print('Parsing %s' % filename)
+    finp = open(filename, 'r')
+
+    data = []
+    for i in range(10):
+        line = finp.readline().upper()
+        data.append(line)
+        if '&END' in line:
+            break
+    else:
+        raise RuntimeError('Problematic FCIDUMP header')
+
+    result = {}
+    tokens = ','.join(data).replace('&FCI', '').replace('&END', '')
+    tokens = tokens.replace(' ', '').replace('\n', '').replace(',,', ',')
+    for token in re.split(',(?=[a-zA-Z])', tokens):
+        key, val = token.split('=')
+        if key in ('NORB', 'NELEC', 'MS2', 'ISYM'):
+            result[key] = int(val.replace(',', ''))
+        elif key in ('ORBSYM',):
+            result[key] = [int(x) for x in val.replace(',', ' ').split()]
+        else:
+            result[key] = val
+
+    # Convert to Molpro orbsym convert_orbsym
+    if 'ORBSYM' in result:
+        if min(result['ORBSYM']) < 0:
+            raise RuntimeError('Unknown orbsym convention')
+
+    norb = result['NORB']
+    n2c = norb * 2
+    norb_pair = norb * (norb+1) // 2
+    h1e = numpy.zeros((n2c,n2c), dtype=numpy.complex128)
+    h2e = numpy.zeros((n2c,n2c,n2c,n2c), dtype=numpy.complex128)
+    dat = finp.readline().split()
+    while dat:
+        i, j, k, l = [int(x) for x in dat[2:6]]
+        if k != 0:
+            h2e[i][j][k][l] = complex(float(dat[0]), float(dat[1]))
+        elif k == 0:
+            if j != 0:
+                h1e[i-1,j-1] = float(dat[0])
+            else:
+                result['ECORE'] = float(dat[0])
+        dat = finp.readline().split()
+
+    idx, idy = numpy.tril_indices(norb, -1)
+    if numpy.linalg.norm(h1e[idy,idx]) == 0:
+        h1e[idy,idx] = h1e[idx,idy]
+    elif numpy.linalg.norm(h1e[idx,idy]) == 0:
+        h1e[idx,idy] = h1e[idy,idx]
+    result['H1'] = h1e
+    result['H2'] = h2e
+    finp.close()
+    return result
 
 def FCIDUMP_Rela4C(mol, my_RDHF, filename):
     n2c = mol.nao_2c()
@@ -27,35 +97,32 @@ def FCIDUMP_Rela4C(mol, my_RDHF, filename):
 
     int2e_res[:n2c, : n2c, :n2c, :n2c] = mol.intor("int2e_spinor")  # LL LL
 
-    tmp = mol.intor("int2e_spv1_spinor") * c1
-    int2e_res[n2c:, : n2c, :n2c, :n2c] = tmp  # SL LL
-    int2e_res[:n2c, :n2c, n2c:, : n2c] = tmp.transpose(2, 3, 0, 1)  # LL SL
-
-    tmp = mol.intor("int2e_vsp1_spinor") * c1
-    int2e_res[:n2c, n2c:, :n2c, :n2c] = tmp  # LS LL
-    int2e_res[:n2c, :n2c, :n2c, n2c:] = tmp.transpose(2, 3, 0, 1)  # LL SL
+    # tmp = mol.intor("int2e_spv1_spinor") * c1
+    # int2e_res[n2c:, : n2c, :n2c, :n2c] = tmp  # SL LL
+    # int2e_res[:n2c, :n2c, n2c:, : n2c] = tmp.transpose(2, 3, 0, 1)  # LL SL
+    # tmp = mol.intor("int2e_vsp1_spinor") * c1
+    # int2e_res[:n2c, n2c:, :n2c, :n2c] = tmp  # LS LL
+    # int2e_res[:n2c, :n2c, :n2c, n2c:] = tmp.transpose(2, 3, 0, 1)  # LL SL
 
     tmp = mol.intor("int2e_spsp1_spinor") * c1**2
     int2e_res[n2c:, n2c:, :n2c, :n2c] = tmp  # SS LL
     int2e_res[:n2c, :n2c, n2c:, n2c:] = tmp.transpose(2, 3, 0, 1)  # LL SS
 
-    int2e_res[:n2c, n2c:, :n2c, n2c:] = mol.intor(
-        "int2e_vsp1vsp2_spinor") * c1**2  # LS LS
-    int2e_res[n2c:, :n2c, n2c:, :n2c] = mol.intor(
-        "int2e_spv1spv2_spinor") * c1**2  # SL SL
+    # int2e_res[:n2c, n2c:, :n2c, n2c:] = mol.intor(
+    #     "int2e_vsp1vsp2_spinor") * c1**2  # LS LS
+    # int2e_res[n2c:, :n2c, n2c:, :n2c] = mol.intor(
+    #     "int2e_spv1spv2_spinor") * c1**2  # SL SL
+    # int2e_res[:n2c, n2c:, n2c:, :n2c] = mol.intor(
+    #     "int2e_vsp1spv2_spinor") * c1**2  # LS SL
+    # int2e_res[n2c:, :n2c, :n2c, n2c:] = mol.intor(
+    #     "int2e_spv1vsp2_spinor") * c1**2  # SL LS
 
-    int2e_res[:n2c, n2c:, n2c:, :n2c] = mol.intor(
-        "int2e_vsp1spv2_spinor") * c1**2  # LS SL
-    int2e_res[n2c:, :n2c, :n2c, n2c:] = mol.intor(
-        "int2e_spv1vsp2_spinor") * c1**2  # SL LS
-
-    tmp = mol.intor("int2e_vsp1spsp2_spinor") * c1**3
-    int2e_res[:n2c, n2c:, n2c:, n2c:] = tmp  # LS SS
-    int2e_res[n2c:, n2c:, :n2c, n2c:] = tmp.transpose(2, 3, 0, 1)  # SS LS
-
-    tmp = mol.intor("int2e_spv1spsp2_spinor") * c1**3
-    int2e_res[n2c:, :n2c,  n2c:, n2c:] = tmp  # SL SS
-    int2e_res[n2c:, n2c:, n2c:, :n2c] = tmp.transpose(2, 3, 0, 1)  # SS SL
+    # tmp = mol.intor("int2e_vsp1spsp2_spinor") * c1**3
+    # int2e_res[:n2c, n2c:, n2c:, n2c:] = tmp  # LS SS
+    # int2e_res[n2c:, n2c:, :n2c, n2c:] = tmp.transpose(2, 3, 0, 1)  # SS LS
+    # tmp = mol.intor("int2e_spv1spsp2_spinor") * c1**3
+    # int2e_res[n2c:, :n2c,  n2c:, n2c:] = tmp  # SL SS
+    # int2e_res[n2c:, n2c:, n2c:, :n2c] = tmp.transpose(2, 3, 0, 1)  # SS SL
 
     int2e_res[n2c:, n2c:, n2c:, n2c:] = mol.intor(
         "int2e_spsp1spsp2_spinor") * c1**4  # SS SS
