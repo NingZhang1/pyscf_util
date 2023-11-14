@@ -167,11 +167,16 @@ def FCIDUMP_Rela4C(mol, my_RDHF, filename):
         fout.write(output_format % nuc)
 
 if __name__ == "__main__":
-    mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
+    # mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
+    mol = gto.M(atom='F 0 0 0', basis='ccpvqz', verbose=5, charge=-1, spin=0)
     # mf = scf.RHF(mol)
     # mf.kernel()
     # mf.analyze()
     mf = scf.dhf.RDHF(mol)
-    mf.kernel()
+    # mf.kernel()
 
-    FCIDUMP_Rela4C(mol, mf, "FCIDUMP_4C")
+    # FCIDUMP_Rela4C(mol, mf, "FCIDUMP_4C")
+
+    mf = scf.hf.RHF(mol)
+
+    mf.kernel()
