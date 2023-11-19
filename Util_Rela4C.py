@@ -168,15 +168,33 @@ def FCIDUMP_Rela4C(mol, my_RDHF, filename):
 
 if __name__ == "__main__":
     # mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
-    mol = gto.M(atom='F 0 0 0', basis='ccpvqz', verbose=5, charge=-1, spin=0)
+    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5, charge=-1, spin=0)
     # mf = scf.RHF(mol)
     # mf.kernel()
     # mf.analyze()
     mf = scf.dhf.RDHF(mol)
+    mf.conv_tol = 1e-12
+    mf.kernel()
+
+    # mf.with_gaunt = True
+    # mf.kernel()
+
+    # mf.with_breit = True
     # mf.kernel()
 
     # FCIDUMP_Rela4C(mol, mf, "FCIDUMP_4C")
 
-    mf = scf.hf.RHF(mol)
+    # mf = scf.hf.RHF(mol)
 
-    mf.kernel()
+    # mf.kernel()
+
+    nao = mf.mo_coeff.shape[1]
+
+    print(mf.mo_energy[nao//2:])
+
+    for i in range(nao//2, nao):
+        print("nao %d" % i)
+
+        for j in range(nao):
+            if abs(mf.mo_coeff[i, j]) > 1e-6:
+                print("%4d %15.8f %15.8f" % (j, mf.mo_coeff[i, j].real, mf.mo_coeff[i, j].imag))
