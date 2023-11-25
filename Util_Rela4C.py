@@ -82,6 +82,62 @@ def read(filename, verbose=True):
     return result
 
 
+def FCIDUMP_Original_Ints(mol, my_RDHF):
+
+    hcore = my_RDHF.get_hcore()
+
+    n2c = mol.nao_2c()
+    n4c = 2 * n2c
+
+    int2e_res = numpy.zeros((n4c, n4c, n4c, n4c), dtype=numpy.complex128)
+    c1 = .5 / lib.param.LIGHT_SPEED
+    int2e_res[:n2c, :n2c, :n2c, :n2c] = mol.intor("int2e_spinor")  # LL LL
+    tmp = mol.intor("int2e_spsp1_spinor") * c1**2
+    int2e_res[n2c:, n2c:, :n2c, :n2c] = tmp  # SS LL
+    int2e_res[:n2c, :n2c, n2c:, n2c:] = tmp.transpose(2, 3, 0, 1)  # LL SS
+    int2e_res[n2c:, n2c:, n2c:, n2c:] = mol.intor(
+        "int2e_spsp1spsp2_spinor") * c1**4  # SS SS
+
+    int2e_breit = numpy.zeros(
+        (n4c, n4c, n4c, n4c), dtype=numpy.complex128)
+
+    ##### (LS|LS) and (SL|SL) #####
+    tmp = mol.intor("int2e_breit_ssp1ssp2_spinor") * c1**2
+    int2e_breit[:n2c, n2c:, :n2c, n2c:] = tmp
+    tmp = mol.intor("int2e_breit_sps1sps2_spinor") * c1**2
+    int2e_breit[n2c:, :n2c, n2c:, :n2c] = tmp
+    ##### (LS|SL) and (SL|LS) #####
+    tmp2 = mol.intor("int2e_breit_ssp1sps2_spinor") * c1**2
+    int2e_breit[:n2c, n2c:, n2c:, :n2c] = tmp2  # (LS|SL)
+    tmp2 = mol.intor("int2e_breit_sps1ssp2_spinor") * c1**2
+    int2e_breit[n2c:, :n2c, :n2c, n2c:] = tmp2  # (SL|LS)
+    ###############################
+
+    print("Coulomb term")
+    tol = 1e-10
+    for i in range(n4c):
+        for j in range(n4c):
+            for k in range(n4c):
+                for l in range(n4c):
+                    if abs(int2e_res[i][j][k][l]) > tol:
+                        print("%18.12E %18.12E %4d %4d %4d %4d" % (
+                            int2e_res[i][j][k][l].real, int2e_res[i][j][k][l].imag, i+1, j+1, k+1, l+1))
+    print("Breit term")  
+    for i in range(n4c):
+        for j in range(n4c):
+            for k in range(n4c):
+                for l in range(n4c):   
+                    if abs(int2e_breit[i][j][k][l]) > tol:
+                        print("%18.12E %18.12E %4d %4d %4d %4d" % (
+                            int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, i+1, j+1, k+1, l+1))
+
+    print("Hcore term")
+    for i in range(n4c):
+        for j in range (n4c):
+            if abs(hcore[i][j]) > tol:
+                print("%18.12E %18.12E %4d %4d %4d %4d" % (
+                    hcore[i][j].real, hcore[i][j].imag, i+1, j+1, 0, 0))
+
 def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="incore", debug=False):
 
     assert mode in ["original", "incore", "outcore"]
@@ -120,12 +176,13 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
             ##### (LS|LS) and (SL|SL) #####
             tmp = mol.intor("int2e_breit_ssp1ssp2_spinor") * c1**2
             int2e_breit[:n2c, n2c:, :n2c, n2c:] = tmp
-            int2e_breit[n2c:, :n2c, n2c:,
-                        :n2c] = tmp.conj().transpose(1, 0, 3, 2)
+            tmp = mol.intor("int2e_breit_sps1sps2_spinor") * c1**2
+            int2e_breit[n2c:, :n2c, n2c:, :n2c] = tmp
             ##### (LS|SL) and (SL|LS) #####
             tmp2 = mol.intor("int2e_breit_ssp1sps2_spinor") * c1**2
-            int2e_breit[:n2c, n2c:, n2c:, :n2c] = tmp2
-            int2e_breit[n2c:, :n2c, :n2c, n2c:] = tmp2.transpose(2, 3, 0, 1)
+            int2e_breit[:n2c, n2c:, n2c:, :n2c] = tmp2  # (LS|SL)
+            tmp2 = mol.intor("int2e_breit_sps1ssp2_spinor") * c1**2
+            int2e_breit[n2c:, :n2c, :n2c, n2c:] = tmp2  # (SL|LS)
             ###############################
             int2e_breit = numpy.einsum(
                 "ijkl,ip->pjkl", int2e_breit, mo_coeff_pes.conj())
@@ -201,18 +258,28 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
 
         output_format = float_format + float_format + ' %4d %4d %4d %4d\n'
         if int2e_coulomb.ndim == 4:
-            for i in range(n2c):
-                # for j in range(n2c):
-                for j in range(i + 1):
-                    # for k in range(n2c):
-                    for k in range(i+1):
-                        for l in range(n2c):
-                            if abs(int2e_coulomb[i][j][k][l]) > tol:
-                                fout.write(output_format % (
-                                    int2e_coulomb[i][j][k][l].real, int2e_coulomb[i][j][k][l].imag, i+1, j+1, k+1, l+1))
-                            if abs(int2e_breit[i][j][l][k]) > tol:
-                                fout.write(output_format % (
-                                    int2e_breit[i][j][l][k].real, int2e_coulomb[i][j][l][k].imag, n2c+i+1, n2c+j+1, n2c+l+1, n2c+k+1))
+            if debug:
+                for i in range(n2c):
+                    for j in range(n2c):
+                        for k in range(n2c):
+                            for l in range(n2c):
+                                if abs(int2e_coulomb[i][j][k][l]) > tol:
+                                    fout.write(output_format % (
+                                        int2e_coulomb[i][j][k][l].real, int2e_coulomb[i][j][k][l].imag, i+1, j+1, k+1, l+1))
+                                if abs(int2e_breit[i][j][k][l]) > tol:
+                                    fout.write(output_format % (
+                                        int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
+            else:
+                for i in range(n2c):
+                    for j in range(i+1):
+                        for k in range(i+1):
+                            for l in range(n2c):
+                                if abs(int2e_coulomb[i][j][k][l]) > tol:
+                                    fout.write(output_format % (
+                                        int2e_coulomb[i][j][k][l].real, int2e_coulomb[i][j][k][l].imag, i+1, j+1, k+1, l+1))
+                                if abs(int2e_breit[i][j][k][l]) > tol:
+                                    fout.write(output_format % (
+                                        int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
         elif int2e_coulomb.ndim == 2:
             raise NotImplementedError("2-fold symmetry is not implemented yet")
             npair = n2c * (n2c + 1) // 2
@@ -248,14 +315,14 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
 
 
 if __name__ == "__main__":
-    mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
-    # mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5, charge=-1, spin=0)
+    # mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
+    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5, charge=-1, spin=0)
     # mf = scf.RHF(mol)
     # mf.kernel()
     # mf.analyze()
     mf = scf.dhf.RDHF(mol)
     mf.conv_tol = 1e-12
-    # mf.kernel()
+    mf.kernel()
 
     # mf.with_gaunt = True
     # mf.kernel()
@@ -264,7 +331,7 @@ if __name__ == "__main__":
     mf.kernel()
 
     int2e1, breit_1 = FCIDUMP_Rela4C(
-        mol, mf, with_breit=True, filename="FCIDUMP_4C", mode="original", debug=True)
+        mol, mf, with_breit=True, filename="FCIDUMP_4C_Breit", mode="original", debug=True)
 
     int2e2, breit_2 = FCIDUMP_Rela4C(
         mol, mf, with_breit=True, filename="FCIDUMP_4C_incore", mode="incore", debug=True)
@@ -292,64 +359,119 @@ if __name__ == "__main__":
 
     nao = mol.nao
 
+    #### check breit term 4-fold symmetry ####
+
+    for i in range(nao*2):
+        for j in range(nao*2):
+            for k in range(nao*2):
+                for l in range(nao*2):
+                    # print(breit_1[i,j,k,l], breit_1[j,i,l,k])
+                    t1 = abs(breit_1[i, j, k, l] - breit_1[j, i, l, k].conj())
+                    t2 = abs(breit_1[i, j, k, l] - breit_1[k, l, i, j].conj())
+                    if t1 > 1e-8:
+                        print("Breit 4-fold symmetry is not satisfied")
+                        print(breit_1[i, j, k, l], breit_1[j, i, l, k])
+
     for i in range(nao):
         for j in range(nao):
             for k in range(nao):
                 for l in range(nao):
 
-                    t1 = abs(int2e1[2*i, 2*j, 2*k, 2*l] - int2e1[2*i, 2*j, 2*l+1, 2*k+1])
-                    t2 = abs(int2e1[2*j+1, 2*i+1, 2*k, 2*l] - int2e1[2*j+1, 2*i+1, 2*l+1, 2*k+1])
-                    t3 = abs(int2e1[2*i, 2*j, 2*k, 2*l] - int2e1[2*j+1, 2*i+1, 2*k, 2*l])
+                    t1 = abs(int2e1[2*i, 2*j, 2*k, 2*l] -
+                             int2e1[2*i, 2*j, 2*l+1, 2*k+1])
+                    t2 = abs(int2e1[2*j+1, 2*i+1, 2*k, 2*l] -
+                             int2e1[2*j+1, 2*i+1, 2*l+1, 2*k+1])
+                    t3 = abs(int2e1[2*i, 2*j, 2*k, 2*l] -
+                             int2e1[2*j+1, 2*i+1, 2*k, 2*l])
                     if t1 > 1e-8 or t2 > 1e-8 or t3 > 1e-8:
                         print("Coulomb AAAA group is not time-reversal symmetric")
-                        print(int2e1[2*i, 2*j, 2*k, 2*l], int2e1[2*i, 2*j, 2*l+1, 2*k+1], int2e1[2*j+1, 2*i+1, 2*k, 2*l], int2e1[2*j+1, 2*i+1, 2*l+1, 2*k+1])
-                    
-                    t1 = abs(breit_1[2*i, 2*j, 2*k, 2*l] + breit_1[2*i, 2*j, 2*l+1, 2*k+1])
-                    t2 = abs(breit_1[2*j+1, 2*i+1, 2*k, 2*l] + breit_1[2*j+1, 2*i+1, 2*l+1, 2*k+1])
-                    t3 = abs(breit_1[2*i, 2*j, 2*k, 2*l] + breit_1[2*j+1, 2*i+1, 2*k, 2*l])
+                        print(int2e1[2*i, 2*j, 2*k, 2*l], int2e1[2*i, 2*j, 2*l+1, 2*k+1],
+                              int2e1[2*j+1, 2*i+1, 2*k, 2*l], int2e1[2*j+1, 2*i+1, 2*l+1, 2*k+1])
+
+                    t1 = abs(breit_1[2*i, 2*j, 2*k, 2*l] +
+                             breit_1[2*i, 2*j, 2*l+1, 2*k+1])
+                    t2 = abs(breit_1[2*j+1, 2*i+1, 2*k, 2*l] +
+                             breit_1[2*j+1, 2*i+1, 2*l+1, 2*k+1])
+                    t3 = abs(breit_1[2*i, 2*j, 2*k, 2*l] +
+                             breit_1[2*j+1, 2*i+1, 2*k, 2*l])
                     if t1 > 1e-8 or t2 > 1e-8 or t3 > 1e-8:
                         print("Breit AAAA group is not time-reversal symmetric")
-                        print(breit_1[2*i, 2*j, 2*k, 2*l+1], -breit_1[2*i, 2*j, 2*l+1, 2*k+1], -breit_1[2*j+1, 2*i+1, 2*k, 2*l], breit_1[2*j+1, 2*i+1, 2*l+1, 2*k+1])
+                        print(breit_1[2*i, 2*j, 2*k, 2*l+1], -breit_1[2*i, 2*j, 2*l+1, 2*k+1], -
+                              breit_1[2*j+1, 2*i+1, 2*k, 2*l], breit_1[2*j+1, 2*i+1, 2*l+1, 2*k+1])
 
-                    t1 = abs(int2e1[2*i, 2*j, 2*k, 2*l+1] + int2e1[2*i, 2*j, 2*l, 2*k+1])
-                    t2 = abs(int2e1[2*j+1, 2*i+1, 2*k, 2*l+1] + int2e1[2*j+1, 2*i+1, 2*l, 2*k+1])
-                    t3 = abs(int2e1[2*i, 2*j, 2*k, 2*l+1] - int2e1[2*j+1, 2*i+1, 2*k, 2*l+1])
+                    t1 = abs(int2e1[2*i, 2*j, 2*k, 2*l+1] +
+                             int2e1[2*i, 2*j, 2*l, 2*k+1])
+                    t2 = abs(int2e1[2*j+1, 2*i+1, 2*k, 2*l+1] +
+                             int2e1[2*j+1, 2*i+1, 2*l, 2*k+1])
+                    t3 = abs(int2e1[2*i, 2*j, 2*k, 2*l+1] -
+                             int2e1[2*j+1, 2*i+1, 2*k, 2*l+1])
                     if t1 > 1e-8 or t2 > 1e-8 or t3 > 1e-8:
                         print("Coulomb AAAB group is not time-reversal symmetric")
-                        print(int2e1[2*i, 2*j, 2*k, 2*l+1], -int2e1[2*i, 2*j, 2*l, 2*k+1], int2e1[2*j+1, 2*i+1, 2*k, 2*l+1], -int2e1[2*j+1, 2*i+1, 2*l, 2*k+1])
+                        print(int2e1[2*i, 2*j, 2*k, 2*l+1], -int2e1[2*i, 2*j, 2*l, 2*k+1],
+                              int2e1[2*j+1, 2*i+1, 2*k, 2*l+1], -int2e1[2*j+1, 2*i+1, 2*l, 2*k+1])
 
-                    t1 = abs(breit_1[2*i, 2*j, 2*k, 2*l+1] - breit_1[2*i, 2*j, 2*l, 2*k+1])
-                    t2 = abs(breit_1[2*j+1, 2*i+1, 2*k, 2*l+1] - breit_1[2*j+1, 2*i+1, 2*l, 2*k+1])
-                    t3 = abs(breit_1[2*i, 2*j, 2*k, 2*l+1] + breit_1[2*j+1, 2*i+1, 2*k, 2*l+1])
+                    t1 = abs(breit_1[2*i, 2*j, 2*k, 2*l+1] -
+                             breit_1[2*i, 2*j, 2*l, 2*k+1])
+                    t2 = abs(breit_1[2*j+1, 2*i+1, 2*k, 2*l+1] -
+                             breit_1[2*j+1, 2*i+1, 2*l, 2*k+1])
+                    t3 = abs(breit_1[2*i, 2*j, 2*k, 2*l+1] +
+                             breit_1[2*j+1, 2*i+1, 2*k, 2*l+1])
                     if t1 > 1e-8 or t2 > 1e-8 or t3 > 1e-8:
                         print("Breit AAAB group is not time-reversal symmetric")
-                        print(breit_1[2*i, 2*j, 2*k, 2*l+1], breit_1[2*i, 2*j, 2*l, 2*k+1], -breit_1[2*j+1, 2*i+1, 2*k, 2*l+1], -breit_1[2*j+1, 2*i+1, 2*l, 2*k+1])
+                        print(breit_1[2*i, 2*j, 2*k, 2*l+1], breit_1[2*i, 2*j, 2*l, 2*k+1], -
+                              breit_1[2*j+1, 2*i+1, 2*k, 2*l+1], -breit_1[2*j+1, 2*i+1, 2*l, 2*k+1])
 
-                    
-                    t1 = abs(int2e1[2*i, 2*j+1, 2*k, 2*l+1] + int2e1[2*i, 2*j+1, 2*l, 2*k+1])
-                    t2 = abs(int2e1[2*j, 2*i+1, 2*k, 2*l+1] + int2e1[2*j, 2*i+1, 2*l, 2*k+1])
-                    t3 = abs(int2e1[2*i, 2*j+1, 2*k, 2*l+1] + int2e1[2*j, 2*i+1, 2*k, 2*l+1])
+                    t1 = abs(int2e1[2*i, 2*j+1, 2*k, 2*l+1] +
+                             int2e1[2*i, 2*j+1, 2*l, 2*k+1])
+                    t2 = abs(int2e1[2*j, 2*i+1, 2*k, 2*l+1] +
+                             int2e1[2*j, 2*i+1, 2*l, 2*k+1])
+                    t3 = abs(int2e1[2*i, 2*j+1, 2*k, 2*l+1] +
+                             int2e1[2*j, 2*i+1, 2*k, 2*l+1])
                     if t1 > 1e-8 or t2 > 1e-8 or t3 > 1e-8:
                         print("Coulomb ABAB group is not time-reversal symmetric")
-                        print(int2e1[2*i, 2*j+1, 2*k, 2*l+1], -int2e1[2*i, 2*j+1, 2*l, 2*k+1], -int2e1[2*j, 2*i+1, 2*k, 2*l+1], int2e1[2*j, 2*i+1, 2*l, 2*k+1])
+                        print(int2e1[2*i, 2*j+1, 2*k, 2*l+1], -int2e1[2*i, 2*j+1, 2*l, 2*k +
+                              1], -int2e1[2*j, 2*i+1, 2*k, 2*l+1], int2e1[2*j, 2*i+1, 2*l, 2*k+1])
 
-                    t1 = abs(breit_1[2*i, 2*j+1, 2*k, 2*l+1] - breit_1[2*i, 2*j+1, 2*l, 2*k+1])
-                    t2 = abs(breit_1[2*j, 2*i+1, 2*k, 2*l+1] - breit_1[2*j, 2*i+1, 2*l, 2*k+1])
-                    t3 = abs(breit_1[2*i, 2*j+1, 2*k, 2*l+1] - breit_1[2*j, 2*i+1, 2*k, 2*l+1])
+                    t1 = abs(breit_1[2*i, 2*j+1, 2*k, 2*l+1] -
+                             breit_1[2*i, 2*j+1, 2*l, 2*k+1])
+                    t2 = abs(breit_1[2*j, 2*i+1, 2*k, 2*l+1] -
+                             breit_1[2*j, 2*i+1, 2*l, 2*k+1])
+                    t3 = abs(breit_1[2*i, 2*j+1, 2*k, 2*l+1] -
+                             breit_1[2*j, 2*i+1, 2*k, 2*l+1])
                     if t1 > 1e-8 or t2 > 1e-8 or t3 > 1e-8:
                         print("Breit ABAB group is not time-reversal symmetric")
-                        print(breit_1[2*i, 2*j+1, 2*k, 2*l+1], breit_1[2*i, 2*j+1, 2*l, 2*k+1], breit_1[2*j, 2*i+1, 2*k, 2*l+1], breit_1[2*j, 2*i+1, 2*l, 2*k+1])
+                        print(breit_1[2*i, 2*j+1, 2*k, 2*l+1], breit_1[2*i, 2*j+1, 2*l, 2*k+1],
+                              breit_1[2*j, 2*i+1, 2*k, 2*l+1], breit_1[2*j, 2*i+1, 2*l, 2*k+1])
 
-                    t1 = abs(int2e1[2*i+1, 2*j, 2*k, 2*l+1] + int2e1[2*i+1, 2*j, 2*l, 2*k+1])
-                    t2 = abs(int2e1[2*j+1, 2*i, 2*k, 2*l+1] + int2e1[2*j+1, 2*i, 2*l, 2*k+1])
-                    t3 = abs(int2e1[2*i+1, 2*j, 2*k, 2*l+1] + int2e1[2*j+1, 2*i, 2*k, 2*l+1])
+                    t1 = abs(int2e1[2*i+1, 2*j, 2*k, 2*l+1] +
+                             int2e1[2*i+1, 2*j, 2*l, 2*k+1])
+                    t2 = abs(int2e1[2*j+1, 2*i, 2*k, 2*l+1] +
+                             int2e1[2*j+1, 2*i, 2*l, 2*k+1])
+                    t3 = abs(int2e1[2*i+1, 2*j, 2*k, 2*l+1] +
+                             int2e1[2*j+1, 2*i, 2*k, 2*l+1])
                     if t1 > 1e-8 or t2 > 1e-8 or t3 > 1e-8:
                         print("Coulomb BAAB group is not time-reversal symmetric")
-                        print(int2e1[2*i+1, 2*j, 2*k, 2*l+1], -int2e1[2*i+1, 2*j, 2*l, 2*k+1], -int2e1[2*j+1, 2*i, 2*k, 2*l+1], int2e1[2*j+1, 2*i, 2*l, 2*k+1])
+                        print(int2e1[2*i+1, 2*j, 2*k, 2*l+1], -int2e1[2*i+1, 2*j, 2*l, 2*k +
+                              1], -int2e1[2*j+1, 2*i, 2*k, 2*l+1], int2e1[2*j+1, 2*i, 2*l, 2*k+1])
 
-                    t1 = abs(breit_1[2*i+1, 2*j, 2*k, 2*l+1] - breit_1[2*i+1, 2*j, 2*l, 2*k+1])
-                    t2 = abs(breit_1[2*j+1, 2*i, 2*k, 2*l+1] - breit_1[2*j+1, 2*i, 2*l, 2*k+1])
-                    t3 = abs(breit_1[2*i+1, 2*j, 2*k, 2*l+1] - breit_1[2*j+1, 2*i, 2*k, 2*l+1])
+                    t1 = abs(breit_1[2*i+1, 2*j, 2*k, 2*l+1] -
+                             breit_1[2*i+1, 2*j, 2*l, 2*k+1])
+                    t2 = abs(breit_1[2*j+1, 2*i, 2*k, 2*l+1] -
+                             breit_1[2*j+1, 2*i, 2*l, 2*k+1])
+                    t3 = abs(breit_1[2*i+1, 2*j, 2*k, 2*l+1] -
+                             breit_1[2*j+1, 2*i, 2*k, 2*l+1])
                     if t1 > 1e-8 or t2 > 1e-8 or t3 > 1e-8:
                         print("Breit BAAB group is not time-reversal symmetric")
-                        print(breit_1[2*i+1, 2*j, 2*k, 2*l+1], breit_1[2*i+1, 2*j, 2*l, 2*k+1], breit_1[2*j+1, 2*i, 2*k, 2*l+1], breit_1[2*j+1, 2*i, 2*l, 2*k+1])
+                        print(breit_1[2*i+1, 2*j, 2*k, 2*l+1], breit_1[2*i+1, 2*j, 2*l, 2*k+1],
+                              breit_1[2*j+1, 2*i, 2*k, 2*l+1], breit_1[2*j+1, 2*i, 2*l, 2*k+1])
+
+    FCIDUMP_Original_Ints(mol, mf)
+
+    overlap = mf.get_ovlp()
+
+    print("overlap")
+
+    for i in range(overlap.shape[0]):
+        for j in range(overlap.shape[1]):
+            if abs(overlap[i, j]) > 1e-8:
+                print("%4d %4d %15.8f %15.8f" % (i, j, overlap[i, j].real, overlap[i, j].imag))

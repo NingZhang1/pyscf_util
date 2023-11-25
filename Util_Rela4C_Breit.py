@@ -217,26 +217,26 @@ if __name__ == "__main__":
 
     print("vj_LS_1.shape = ", vj_LS_1.shape)
     print("vj_LS_2.shape = ", vj_LS_2.shape)
-    print("vk_LS.shape = ", vk_LS.shape)
-    print("vk_SS.shape = ", vk_SS.shape)
-    print("vk_LL.shape = ", vk_LL.shape)
+    print("vk_LS.shape   = ", vk_LS.shape)
+    print("vk_SS.shape   = ", vk_SS.shape)
+    print("vk_LL.shape   = ", vk_LL.shape)
 
-    vj_LS_1_test = numpy.einsum("ijkl,kl->ij", tmp1, dmls)
+    vj_LS_1_test = numpy.einsum("ijkl,kl->ij", tmp1, dmls.conj())
 
     print("diff = ", numpy.linalg.norm(vj_LS_1 - vj_LS_1_test))
 
     for i in range(n2c):
         for j in range(n2c):
-            if abs(vj_LS_1[i, j]) > 1e-8:
+            if abs(vj_LS_1[i, j]) > 1e-12:
                 print("i = ", i, "j = ", j, vj_LS_1[i, j], vj_LS_1_test[i, j])
 
-    vj_LS_2_test = numpy.einsum("ijkl,kl->ij", tmp2, dmsl)
+    vj_LS_2_test = numpy.einsum("ijkl,kl->ij", tmp2, dmsl.conj())
 
     print("diff = ", numpy.linalg.norm(vj_LS_2 - vj_LS_2_test))
     
     for i in range(n2c):
         for j in range(n2c):
-            if abs(vj_LS_2[i, j]) > 1e-8:
+            if abs(vj_LS_2[i, j]) > 1e-12:
                 print("i = ", i, "j = ", j, vj_LS_2[i, j], vj_LS_2_test[i, j])
 
     vk_LS_test = numpy.einsum("ijkl,kj->il", tmp1, dmls.conj()) ## ? 
