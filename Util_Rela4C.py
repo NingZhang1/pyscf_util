@@ -266,9 +266,10 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
                                 if abs(int2e_coulomb[i][j][k][l]) > tol:
                                     fout.write(output_format % (
                                         int2e_coulomb[i][j][k][l].real, int2e_coulomb[i][j][k][l].imag, i+1, j+1, k+1, l+1))
-                                if abs(int2e_breit[i][j][k][l]) > tol:
-                                    fout.write(output_format % (
-                                        int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
+                                if with_breit:
+                                    if abs(int2e_breit[i][j][k][l]) > tol:
+                                        fout.write(output_format % (
+                                            int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
             else:
                 for i in range(n2c):
                     for j in range(i+1):
@@ -277,9 +278,10 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
                                 if abs(int2e_coulomb[i][j][k][l]) > tol:
                                     fout.write(output_format % (
                                         int2e_coulomb[i][j][k][l].real, int2e_coulomb[i][j][k][l].imag, i+1, j+1, k+1, l+1))
-                                if abs(int2e_breit[i][j][k][l]) > tol:
-                                    fout.write(output_format % (
-                                        int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
+                                if with_breit:
+                                    if abs(int2e_breit[i][j][k][l]) > tol:
+                                        fout.write(output_format % (
+                                            int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
         elif int2e_coulomb.ndim == 2:
             raise NotImplementedError("2-fold symmetry is not implemented yet")
             npair = n2c * (n2c + 1) // 2
@@ -312,6 +314,8 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
 
     if debug:
         return int2e_coulomb, int2e_breit
+    else:
+        return None, None
 
 
 if __name__ == "__main__":
@@ -335,6 +339,11 @@ if __name__ == "__main__":
 
     int2e2, breit_2 = FCIDUMP_Rela4C(
         mol, mf, with_breit=True, filename="FCIDUMP_4C_incore", mode="incore", debug=True)
+
+    # int2e2, breit_2 = FCIDUMP_Rela4C(
+    #     mol, mf, with_breit=False, filename="FCIDUMP_4C_incore", mode="incore", debug=True)
+
+    # exit(1)
 
     # FCIDUMP_Rela4C(mol, mf, filename="FCIDUMP_4C_incore2", mode="incore")
 
