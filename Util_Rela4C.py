@@ -122,21 +122,22 @@ def FCIDUMP_Original_Ints(mol, my_RDHF):
                     if abs(int2e_res[i][j][k][l]) > tol:
                         print("%18.12E %18.12E %4d %4d %4d %4d" % (
                             int2e_res[i][j][k][l].real, int2e_res[i][j][k][l].imag, i+1, j+1, k+1, l+1))
-    print("Breit term")  
+    print("Breit term")
     for i in range(n4c):
         for j in range(n4c):
             for k in range(n4c):
-                for l in range(n4c):   
+                for l in range(n4c):
                     if abs(int2e_breit[i][j][k][l]) > tol:
                         print("%18.12E %18.12E %4d %4d %4d %4d" % (
                             int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, i+1, j+1, k+1, l+1))
 
     print("Hcore term")
     for i in range(n4c):
-        for j in range (n4c):
+        for j in range(n4c):
             if abs(hcore[i][j]) > tol:
                 print("%18.12E %18.12E %4d %4d %4d %4d" % (
                     hcore[i][j].real, hcore[i][j].imag, i+1, j+1, 0, 0))
+
 
 def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="incore", debug=False):
 
@@ -245,7 +246,7 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
     nmo = n2c // 2
     nelec = mol.nelectron
     ms = 0
-    tol = 1e-10
+    tol = 1e-8
     nuc = energy_core
     float_format = tools.fcidump.DEFAULT_FLOAT_FORMAT
 
@@ -318,6 +319,237 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
         return None, None
 
 
+def _apply_time_reversal_op(mol, mo_coeff, debug=False):
+
+    trmaps = mol.time_reversal_map()
+    idxA = numpy.where(trmaps > 0)[0]
+    idxB = trmaps[idxA] - 1
+    n = trmaps.size
+    idx2 = numpy.hstack((idxA, idxA+n, idxB, idxB+n))
+
+    if debug:
+        print("trmaps = ", trmaps)
+        print("idxA   = ", idxA)
+        print("idxB   = ", idxB)
+
+    time_reversal_m = numpy.zeros((2*n, 2*n), dtype=numpy.int64)
+
+    for irow, data in enumerate(trmaps):
+        icol = data
+        elmt = 1
+        if data < 0:
+            icol = -data - 1
+            elmt = -1
+        else:
+            icol = data - 1
+            elmt = 1
+        time_reversal_m[irow, icol] = elmt
+
+    time_reversal_m[n:, n:] = time_reversal_m[:n, :n]
+
+    if debug:
+        print("time_reversal_m = ", time_reversal_m)
+
+    ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
+
+    tr_act = reduce(numpy.dot, (mo_coeff.T.conj(), ovlp_4C, time_reversal_m, mo_coeff.conj()))
+    tr_act_packed = []
+    for i in range(tr_act.shape[0]):
+        for j in range(tr_act.shape[1]):
+            if abs(tr_act[i, j]) > 1e-6:
+                if debug:
+                    print("tr_act = ", i, j, tr_act[i, j])
+                tr_act_packed.append([j, tr_act[i, j]])
+    
+    return tr_act_packed
+
+def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
+
+    trmaps = mol.time_reversal_map()
+    idxA = numpy.where(trmaps > 0)[0]
+    idxB = trmaps[idxA] - 1
+    n = trmaps.size
+    idx2 = numpy.hstack((idxA, idxA+n, idxB, idxB+n))
+
+    if debug:
+        print("trmaps = ", trmaps)
+        print("idxA   = ", idxA)
+        print("idxB   = ", idxB)
+
+    time_reversal_m = numpy.zeros((2*n, 2*n), dtype=numpy.int64)
+
+    for irow, data in enumerate(trmaps):
+        icol = data
+        elmt = 1
+        if data < 0:
+            icol = -data - 1
+            elmt = -1
+        else:
+            icol = data - 1
+            elmt = 1
+        time_reversal_m[irow, icol] = elmt
+
+    time_reversal_m[n:, n:] = time_reversal_m[:n, :n]
+
+    if debug:
+        print("time_reversal_m = ", time_reversal_m)
+
+    ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
+
+    ######### the first step is to reorder the orb so that the TR seems to be addapted! #########
+
+    tr_act = reduce(numpy.dot, (mo_coeff.T.conj(), ovlp_4C, time_reversal_m, mo_coeff.conj()))
+    tr_act_packed = []
+    for i in range(tr_act.shape[0]):
+        for j in range(tr_act.shape[1]):
+            if abs(tr_act[i, j]) > 1e-6:
+                if debug:
+                    print("tr_act = ", i, j, tr_act[i, j])
+                tr_act_packed.append([j, tr_act[i, j]])
+
+    Res = mo_coeff.copy()
+
+    idxA_all = numpy.hstack((idxA, idxA+n))
+    ovlp_A = ovlp_4C[idxA_all, :][:, idxA_all]
+
+    for i in range(0, 2*n, 2):
+        if tr_act_packed[i][0] != i+1:
+            print("Error in time reversal symmetry")
+            exit(1)
+
+        if tr_act_packed[i][1] < 0.0:
+            if debug:
+                print("swap %d and %d" % (i, i+1))
+            # swap i and i+1
+            tmp = Res[:, i].copy()
+            Res[:, i] = Res[:, i+1]
+            Res[:, i+1] = tmp
+            if debug:
+                print(Res[idx2, i:i+2])
+            
+        # mo_coeff_A = Res[idxA_all, i]
+        # norm_A = reduce(numpy.dot, (mo_coeff_A.T.conj(), ovlp_A, mo_coeff_A))
+        # if norm_A < 0.5:
+        #     if debug:
+        #         print("swap %d and %d" % (i, i+1))
+        #         print("norm_A = ", norm_A)
+        #     # swap i and i+1
+        #     tmp = Res[:, i].copy()
+        #     Res[:, i] = Res[:, i+1]
+        #     Res[:, i+1] = tmp
+        #     if debug:
+        #         print(Res[idx2, i:i+2])
+
+    ######### the second step is to rotate the orb so that the TR is really to be addapted! #########
+
+    for i in range(0, 2*n, 2):
+        mo_coeff_A = Res[idxA_all, i]
+        norm_A = reduce(numpy.dot, (mo_coeff_A.T.conj(), ovlp_A, mo_coeff_A))
+        if norm_A < 0.5:
+            if debug:
+                print("norm_A = ", norm_A)
+            # swap i and i+1
+            Res[:, i] = -Res[:, i]
+            tmp = Res[:, i].copy()
+            Res[:, i] = Res[:, i+1]
+            Res[:, i+1] = tmp
+            if debug:
+                print(Res[idx2, i:i+2])
+        
+
+    return Res
+
+
+def _atom_Jz_adapted(mol, mo_coeff, mo_energy, debug=False):
+    labels = mol.spinor_labels()
+    if debug:
+        print(labels)
+    n = mol.nao_2c()
+    Jz = numpy.zeros((2*n, 2*n), dtype=numpy.complex128)
+    for i in range(n):
+        sz_str = labels[i].split(",")[1]
+        for j in range(len(sz_str)):
+            if sz_str[j] == " ":
+                sz_str = sz_str[:j]
+                break
+        a, b = sz_str.split("/")
+        Jz[i, i] = float(int(a)/int(b))
+        Jz[i+n, i+n] = float(int(a)/int(b))
+
+    if debug:
+        print("Jz = ", Jz)
+
+    ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
+
+    loc = 0
+
+    permute = []
+
+    Res = mo_coeff.copy()
+
+    while True:
+
+        ene_now = mo_energy[loc]
+        loc_end = None
+        for i in range(loc, mo_coeff.shape[1]):
+            if abs(mo_energy[i] - ene_now) > 1e-5:
+                loc_end = i
+                break
+        
+        if debug:
+            print("loc = ", loc, " loc_end = ", loc_end, " ene_now = ", ene_now)
+            print("mo_energy[loc:loc_end] = ", mo_energy[loc:loc_end])
+
+        if loc_end is None:
+            loc_end = mo_coeff.shape[1]
+
+        norb = loc_end - loc
+
+        mo_coeff_tmp = mo_coeff[:, loc:loc_end]
+        Jz_Tmp = reduce(numpy.dot, (mo_coeff_tmp.T.conj(),
+                        ovlp_4C, Jz, mo_coeff_tmp))
+        e, h = numpy.linalg.eigh(Jz_Tmp)
+
+        if debug:
+            print("Jz_Tmp = ", Jz_Tmp)
+            print("e = ", e)
+
+        # rotate the orbitals
+
+        Res[:, loc:loc_end] = numpy.dot(mo_coeff_tmp, h)
+
+        for i in range(norb // 2):
+            permute.append(loc + norb - 1 - i)
+            permute.append(loc + i)
+
+        if i % 2 == 1:
+            if debug:
+                print("--------------------")
+
+        loc = loc_end
+
+        if debug:
+            print("loc = ", loc)
+            print("mf.mo_coeff.shape[1] = ", Res.shape[1])
+
+        if loc == mo_coeff.shape[1]:
+            break
+
+    if debug:
+        print("permute = ", permute)
+
+    Res = Res[:, permute]
+
+    if debug:
+        ovlp_mo = reduce(numpy.dot, (Res.T.conj(), ovlp_4C, Res))
+        print("ovlp_mo = ", numpy.diag(ovlp_mo))
+
+        Jz_mo = reduce(numpy.dot, (Res.T.conj(), ovlp_4C, Jz, Res))
+        print("Jz_mo = ", numpy.diag(Jz_mo)[n:])
+
+    return Res
+
+
 if __name__ == "__main__":
     # mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
     mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5, charge=-1, spin=0)
@@ -334,16 +566,48 @@ if __name__ == "__main__":
     mf.with_breit = True
     mf.kernel()
 
+    trmaps = mol.time_reversal_map()
+    idxA = numpy.where(trmaps > 0)[0]
+    idxB = trmaps[idxA] - 1
+    n = trmaps.size
+    idx2 = numpy.hstack((idxA, idxA+n, idxB, idxB+n))
+    ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
+
+    mf.mo_coeff = _atom_Jz_adapted(mol, mf.mo_coeff, mf.mo_energy, debug=True)
+
+    mf.mo_coeff = _time_reversal_symmetry_adapted(mol, mf.mo_coeff, debug=True)
+
+    # Jz_mo = reduce(numpy.dot, (mf.mo_coeff.T.conj(), ovlp_4C, Jz, mf.mo_coeff))
+    # print("Jz_mo = ", numpy.diag(Jz_mo)[n:])
+
+    # print(mf.mo_coeff[idx2, mol.nao_2c() +  5 - 1])
+    # print(mf.mo_coeff[idx2, mol.nao_2c() +  6 - 1])
+    # print(mf.mo_coeff[idx2, mol.nao_2c() +  7 - 1])
+    # print(mf.mo_coeff[idx2, mol.nao_2c() +  8 - 1])
+    # print(mf.mo_coeff[idx2, mol.nao_2c() +  9 - 1])
+    # print(mf.mo_coeff[idx2, mol.nao_2c() + 10 - 1])
+    # print(mf.mo_coeff[idx2, mol.nao_2c() + 11 - 1])
+    # print(mf.mo_coeff[idx2, mol.nao_2c() + 12 - 1])
+    # print(mf.mo_coeff[idx2, mol.nao_2c() + 13 - 1])
+    # print(mf.mo_coeff[idx2, mol.nao_2c() + 14 - 1])
+
+    Res = _apply_time_reversal_op(mol, mf.mo_coeff, True)
+
+    for ix, data in enumerate(Res):
+        print(ix, " = ", data)
+
+    # exit(1)
+
     int2e1, breit_1 = FCIDUMP_Rela4C(
-        mol, mf, with_breit=True, filename="FCIDUMP_4C_Breit", mode="original", debug=True)
+        mol, mf, with_breit=True, filename="FCIDUMP_4C_Breit", mode="original", debug=False)
 
     int2e2, breit_2 = FCIDUMP_Rela4C(
-        mol, mf, with_breit=True, filename="FCIDUMP_4C_incore", mode="incore", debug=True)
+        mol, mf, with_breit=True, filename="FCIDUMP_4C_incore", mode="incore", debug=False)
 
     # int2e2, breit_2 = FCIDUMP_Rela4C(
     #     mol, mf, with_breit=False, filename="FCIDUMP_4C_incore", mode="incore", debug=True)
 
-    # exit(1)
+    exit(1)
 
     # FCIDUMP_Rela4C(mol, mf, filename="FCIDUMP_4C_incore2", mode="incore")
 
@@ -474,13 +738,11 @@ if __name__ == "__main__":
                         print(breit_1[2*i+1, 2*j, 2*k, 2*l+1], breit_1[2*i+1, 2*j, 2*l, 2*k+1],
                               breit_1[2*j+1, 2*i, 2*k, 2*l+1], breit_1[2*j+1, 2*i, 2*l, 2*k+1])
 
-    FCIDUMP_Original_Ints(mol, mf)
-
-    overlap = mf.get_ovlp()
-
-    print("overlap")
-
-    for i in range(overlap.shape[0]):
-        for j in range(overlap.shape[1]):
-            if abs(overlap[i, j]) > 1e-8:
-                print("%4d %4d %15.8f %15.8f" % (i, j, overlap[i, j].real, overlap[i, j].imag))
+    # FCIDUMP_Original_Ints(mol, mf)
+    # overlap = mf.get_ovlp()
+    # print("overlap")
+    # for i in range(overlap.shape[0]):
+    #     for j in range(overlap.shape[1]):
+    #         if abs(overlap[i, j]) > 1e-8:
+    #             print("%4d %4d %15.8f %15.8f" %
+    #                   (i, j, overlap[i, j].real, overlap[i, j].imag))

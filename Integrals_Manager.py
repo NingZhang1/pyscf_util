@@ -133,7 +133,7 @@ APP = os.getenv("ICI_CPP")
 if __name__ == "__main__":
 
     from pyscf import gto, scf
-    import SOC_Driver
+    # import SOC_Driver
     from functools import reduce
 
     b = 1.24253
@@ -173,6 +173,8 @@ if __name__ == "__main__":
 
     DumpFileName = "FCIDUMP"
     tools.fcidump.from_scf(mf, DumpFileName, 1e-10)
+
+    exit(1)
 
     # inputfile
 
