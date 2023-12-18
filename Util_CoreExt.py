@@ -41,6 +41,7 @@ def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, debug=False):
     # dump the CoreExt FCIDUMP
     # CoreOrb: [{"loc": [0, 2], "cas": [4, 4], "type": "C1s"}, ...]
     # prefix: prefix of the FCIDUMP file
+    # return useful info for run the test!
 
     mo = hf.mo_coeff
     CoreOrb_CAS = []
@@ -64,6 +65,18 @@ def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, debug=False):
             # the nor-core that involved
             orb_order.extend(list(range(nocc - cas[0], mol.nao)))
 
+        # add nsegment
+
+        # print("loc: ", loc)
+        # print("cas: ", cas)
+
+        nsegment = "0 %d %d %d %d 0 %d 0" % (
+            loc[0] + nocc - cas[0] - loc[1],
+            loc[1] - loc[0],
+            cas[0], cas[1],
+            mol.nao - nocc - cas[1]
+        )
+
         if debug:
             print("orb_order: ", orb_order)
 
@@ -80,8 +93,9 @@ def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, debug=False):
             mol, prefix + core_orbs_info["type"], mo, orbsym)
 
         Res.append({"loc": loc, "cas": cas, "type": core_orbs_info["type"],
-                    "orb_order": orb_order, "orbsym": orbsym, "mo": mo})
-    
+                    "orb_order": orb_order, "orbsym": orbsym, "mo": mo,
+                    "nsegment": nsegment})
+
     return Res
 
 
@@ -115,3 +129,9 @@ H  0.9220909   1.2282467  0.0000000
     hf = _perform_hf_then_localize_orb(mol, CoreOrb_C2H4, debug=True)
 
     _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb_C2H4, "FCIDUMP_C2H4_", debug=True)
+
+    task = "0 0 2 1 1 2 0 2 1 1"
+
+    # generate the input file
+
+    # run the test
