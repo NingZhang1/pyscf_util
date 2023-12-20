@@ -36,7 +36,7 @@ def _perform_hf_then_localize_orb(mol, CoreOrb: list, debug=False):
     return mf
 
 
-def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, debug=False):
+def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, dump = True, debug=False):
 
     # dump the CoreExt FCIDUMP
     # CoreOrb: [{"loc": [0, 2], "cas": [4, 4], "type": "C1s"}, ...]
@@ -89,8 +89,9 @@ def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, debug=False):
 
         ### dump the FCIDUMP ###
 
-        pyscf.tools.fcidump.from_mo(
-            mol, prefix + core_orbs_info["type"], mo, orbsym)
+        if dump:
+            pyscf.tools.fcidump.from_mo(
+                mol, prefix + core_orbs_info["type"], mo, orbsym)
 
         Res.append({"loc": loc, "cas": cas, "type": core_orbs_info["type"],
                     "orb_order": orb_order, "orbsym": orbsym, "mo": mo,
