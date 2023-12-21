@@ -756,11 +756,12 @@ if __name__ == "__main__":
         for basis in BASIS:
             mol = pyscf.gto.M(
                 verbose=4,
-                atom=Mole_Geometry[mole],
+                atom=Mole_Geometry_Bohr[mole],
                 basis=basis,
                 spin=0,
                 charge=0,
                 symmetry=True,
+                unit="Bohr",
             )
             if mole == "O2":
                 mol.spin = 2
@@ -816,12 +817,15 @@ if __name__ == "__main__":
         for basis in BASIS:
             mol = pyscf.gto.M(
                 verbose=4,
-                atom=Mole_Geometry[mole],
+                atom=Mole_Geometry_Bohr[mole],
                 basis=basis,
                 spin=0,
                 charge=0,
                 symmetry=True,
+                unit="Bohr",
             )
+            if mole == "O2":
+                mol.spin = 2
             mol.build()
 
             if mol.groupname == "Dooh":
