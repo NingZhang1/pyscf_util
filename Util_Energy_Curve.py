@@ -1,7 +1,5 @@
 import pyscf
-import numpy
-import Util_Math
-import pyscf_util
+import Driver_SCF
 
 
 def _Generate_InputFile_SiCI(inputfilename,
@@ -121,7 +119,7 @@ def iCISCF_scan(AtomA: str,
         if 'newton' in SCF_config.keys():
             newton = SCF_config['newton']
 
-        SCF = pyscf_util.RUN_SCF(Mol, sfx1e, do_pyscf_analysis, newton)
+        SCF = Driver_SCF.Run_SCF(Mol, sfx1e, do_pyscf_analysis, newton)
 
         # RUN MCSCF
 
@@ -167,7 +165,7 @@ def iCISCF_scan(AtomA: str,
 
             # run config
 
-            casscf = pyscf_util.RUN_MCSCF(
+            casscf = Driver_SCF.Run_MCSCF(
                 Mol, SCF, nelecas, ncas, cas_list, mc_conv_tol, mc_conv_tol_grad, mc_max_macro, False, state, None)
 
         if iCISCF_config is not None:
