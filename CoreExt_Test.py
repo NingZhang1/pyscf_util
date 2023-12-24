@@ -1,7 +1,6 @@
 import copy
 from pyscf import tools
 import pyscf
-import pickle
 import Util_CoreExt
 
 Mole_Geometry = {

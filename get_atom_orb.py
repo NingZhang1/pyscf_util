@@ -84,7 +84,7 @@ def _label_atom_orb(energy):
     res = {}
     orb_indx = []
     for indx in range(0, len(energy)):
-        if abs(energy[indx]-energy_now) > 1e-8 and  multi != 0:
+        if abs(energy[indx]-energy_now) > 1e-8 and multi != 0:
             l = (multi-1)//2
             orb_info[l][1] += 1
             res[str(orb_info[l][1])+orb_info[l][0]] = orb_indx
@@ -178,7 +178,7 @@ def atom_min_cas_bas(atom_label_list, basis='6-31G(d)', print_verbose=0):
     for atom in atom_label_list:
         a, b, c = _atom_min_cas(atom, basis, print_verbose)
         res[atom] = b
-        res[atom+"_bas_label"] = c 
+        res[atom+"_bas_label"] = c
         if print_verbose >= 10:
             print(a)
             print(c)

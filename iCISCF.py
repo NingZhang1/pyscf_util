@@ -4,20 +4,13 @@ import os
 import sys
 import numpy
 import struct
-from functools import reduce
 from pyscf import tools
-import time
-import tempfile
 import copy
-import glob
-import shutil
-from subprocess import check_call, check_output, CalledProcessError
 from pyscf.lib import logger
 from pyscf import lib
 from pyscf import tools
 from pyscf import ao2mo
 from pyscf import mcscf, fci
-import numpy as np
 
 import iCI_InputFile_Generator
 
@@ -263,26 +256,26 @@ class iCI(lib.StreamObject):
                                         delimiter=',', skiprows=1, unpack=True)
         rdm2 = numpy.zeros((norb, norb, norb, norb))
         rdm2[i, j, k, l] = rdm2[j, i, l, k] = val
-        rdm2 = rdm2.transpose(0, 3, 1, 2) # p^+ q r^+ s
+        rdm2 = rdm2.transpose(0, 3, 1, 2)  # p^+ q r^+ s
 
-        # 补全 nfzc 
+        # 补全 nfzc
         for j in range(nfzc):
-            rdm2[j,j,j,j]=2.0
+            rdm2[j, j, j, j] = 2.0
         for j in range(nfzc):
             for i in range(nfzc):
-                if i==j:
+                if i == j:
                     continue
-                rdm2[i,i,j,j] = 4.0
-                rdm2[i,j,j,i] = -2.0
+                rdm2[i, i, j, j] = 4.0
+                rdm2[i, j, j, i] = -2.0
         norb = rdm2.shape[0]
         for i in range(nfzc):
-            for p in range(nfzc,norb):
-                for q in range(nfzc,norb):
-                    rdm2[i,i,p,q] = rdm1[p,q]*2.0
-                    rdm2[p,q,i,i] = rdm1[p,q]*2.0
-                    rdm2[p,q,i,i] = rdm1[p,q]*2.0
-                    rdm2[i,p,q,i] = rdm1[p,q]*-1.0
-                    rdm2[p,i,i,q] = rdm1[p,q]*-1.0
+            for p in range(nfzc, norb):
+                for q in range(nfzc, norb):
+                    rdm2[i, i, p, q] = rdm1[p, q]*2.0
+                    rdm2[p, q, i, i] = rdm1[p, q]*2.0
+                    rdm2[p, q, i, i] = rdm1[p, q]*2.0
+                    rdm2[i, p, q, i] = rdm1[p, q]*-1.0
+                    rdm2[p, i, i, q] = rdm1[p, q]*-1.0
 
         return rdm1, rdm2
 
@@ -356,7 +349,7 @@ class iCI(lib.StreamObject):
 
         nval = min(self.config["nvalelec"], norb)
         if norb <= 8:
-            nval = norb            
+            nval = norb
         nval_hole = nval//2
         nval_part = nval - nval_hole
         ncore = (nelectrons - self.config["nvalelec"])//2
@@ -386,7 +379,7 @@ class iCI(lib.StreamObject):
 
         self = execute_iCI(self)
 
-        #　read energy
+        # 　read energy
 
         calc_e = read_energy(self)
         res_calc_e = 0.0
@@ -472,7 +465,7 @@ class iCI(lib.StreamObject):
 
         self = execute_iCI(self)
 
-        #　read energy
+        # 　read energy
 
         calc_e = read_energy(self)
         res_calc_e = 0.0
@@ -505,6 +498,8 @@ def iCISCF(mf, norb, nelec, tol=1.e-8, cmin=1e-4, state=[[0, 0, 1]], *args, **kw
     '''Shortcut function to setup CASSCF using the iCI solver.  The iCI
     solver is properly initialized in this function so that the 1-step
     algorithm can be applied with iCI-CASSCF.
+
+    NOTE: it is not the iCISCF in BDF, it is just a MCSCF with iCI solver. 
 
     Examples:
 

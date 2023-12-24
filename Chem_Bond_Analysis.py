@@ -8,7 +8,6 @@ import Util_Mole
 from Util_Pic import draw_heatmap
 from functools import reduce
 import numpy
-import Util_Math
 
 occ_label = {
     "H": ["1s"],

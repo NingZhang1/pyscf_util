@@ -1,13 +1,42 @@
 from functools import reduce
-import TEST_CONFIG
 
 import pyscf
 import Util_Mole
 import numpy as np
 from pyscf import fci, mcscf
 
+"""
 
-def Run_SCF(mol, sfx1e=False,  newton=False):
+Driver_SCF.py is a module for running SCF and MCSCF calculation.
+
+Contents
+--------
+
+Functions:
+
+::
+    
+        Run_SCF
+        Run_SCF_customized
+        Analysis_SCF
+        Run_MCSCF
+
+"""
+
+
+def Run_SCF(mol, sfx1e=False, newton=False):
+    ''' Run SCF calculation given a molecule object
+    Args:
+        mol: a molecule object
+        sfx1e: whether to use sfx2c
+        newton: whether to use newton solver
+
+    Kwargs:
+
+    Returns:
+        my_hf: a (runned) pyscf SCF object 
+    '''
+
     my_hf = pyscf.scf.ROHF(mol)
     if sfx1e:
         my_hf = pyscf.scf.sfx2c(my_hf)
@@ -18,6 +47,21 @@ def Run_SCF(mol, sfx1e=False,  newton=False):
 
 
 def Run_SCF_customized(mol, mo_coeff, sfx1e=False,  newton=False):
+    ''' Run SCF calculation given a molecule object and MO coefficients 
+
+    Args:
+        mol: a molecule object
+        mo_coeff: MO coefficients
+        sfx1e: whether to use sfx2c
+        newton: whether to use newton solver
+
+    Kwargs:
+
+    Returns:
+        my_hf: a (runned) pyscf SCF object
+
+    '''
+
     my_hf = pyscf.scf.ROHF(mol)
     if sfx1e:
         my_hf = pyscf.scf.sfx2c(my_hf)
@@ -49,6 +93,18 @@ def mocoeff_phase_canonicalize(mo_coeff):
 
 
 def Analysis_SCF(mol, my_hf):
+    ''' Analyze the SCF results
+
+    Args:
+        mol: a molecule object
+        my_hf: a pyscf SCF object
+    
+    Kwargs:
+
+    Returns: 
+
+    '''
+
     mo_energy = my_hf.mo_energy
     orbsym_ID, orbsym = Util_Mole.get_orbsym(mol, my_hf.mo_coeff)
     mo_occ = my_hf.mo_occ
@@ -89,6 +145,37 @@ def Run_MCSCF(_mol, _rohf, _nelecas, _ncas,
               _do_pyscf_analysis=False,
               _internal_rotation=False,
               _run_mcscf=True,):
+    ''' Run MCSCF calculation
+
+    TODO: add iCI solver
+
+    Args:
+        _mol                : a molecule object
+        _rohf               : a pyscf ROHF object
+        _nelecas            : a tuple (nelec_alpha, nelec_beta) or an integer (= nelec_alpha + nelec_beta)
+        _ncas               : the number of active orbitals
+        _frozen             : the number of frozen orbitals
+        _mo_init            : the initial guess of MO coefficients
+        _cas_list           : the list of active orbitals
+        _mc_conv_tol        : the convergence tolerance of MCSCF
+        _mc_max_macro       : the maximum number of macro iterations
+        _iCI                : whether to use iCI solver
+        _pyscf_state        : the list of states to be calculated
+        _iCI_State          : the list of states to be calculated
+        _cmin               : the threshold of iCI
+        _tol                : the threshold of iCI
+        _do_pyscf_analysis  : whether to do pyscf analysis
+        _internal_rotation  : whether to use internal rotation
+        _run_mcscf          : whether to run MCSCF
+
+    Kwargs:
+
+    Returns:
+        my_mc     : a pyscf MCSCF object
+        (mo_init) : the initial guess of MO coefficients
+        
+    '''
+
     # Generate MCSCF object
     my_mc = pyscf.mcscf.CASSCF(_rohf, nelecas=_nelecas, ncas=_ncas)
     my_mc.conv_tol = _mc_conv_tol

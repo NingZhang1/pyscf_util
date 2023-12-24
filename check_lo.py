@@ -4,7 +4,7 @@ import torch
 import get_atom_orb
 import Chem_Bond_Analysis
 
-load_path = '/home/ningzhang/GitHubPackage/deepdf/data/qm9_100'
+load_path = None
 
 
 def check_locMO(atm_bas='6-31G(d)', vir_label=Chem_Bond_Analysis.vir_label_min, vir_name="minimal"):

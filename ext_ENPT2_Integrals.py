@@ -1,7 +1,5 @@
 import pyscf
 import numpy
-import Driver_SCF
-import Util_Mole
 from functools import reduce
 from pyscf import tools
 import Util_Orb
@@ -346,8 +344,7 @@ def BDF_molden_2_extPT_FCIDUMP(mol, scf, molden_file, NFZC, NACT, NVIR, fcidump_
 
 if __name__ == "__main__":
 
-    from pyscf import gto, scf
-    import SOC_Driver
+    from pyscf import scf
     from functools import reduce
 
     b = 1.24253

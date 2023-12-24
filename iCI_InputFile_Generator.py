@@ -1,47 +1,29 @@
 # coding=UTF-8
-import pyscf
-import os
-import sys
-import numpy
-import struct
-from functools import reduce
-from pyscf import tools
-import time
-import tempfile
-import copy
-import glob
-import shutil
-from subprocess import check_call, check_output, CalledProcessError
-from pyscf.lib import logger
-from pyscf import lib
-from pyscf import tools
-from pyscf import ao2mo
-from pyscf import mcscf, fci
-import numpy as np
 
 iCI_Keywords = [
-        "irrep", 
-        "unpair",
-        "nstates",
-        "nvalelec",
-        "etol",
-        "cmin", 
-        "rotatemo",
-        "perturbation",
-        "nsegment",
-        "spin",
-        "inputcfg", 
-        "epsilon2",
-        "davidson",
-        "direct",
-        "task",
-        "dumprdm", 
-        "relative",
-        "ewin_ini",
-        "selection",
-        "print",
-        "doublegroup", 
-        "prune"]
+    "irrep",
+    "unpair",
+    "nstates",
+    "nvalelec",
+    "etol",
+    "cmin",
+    "rotatemo",
+    "perturbation",
+    "nsegment",
+    "spin",
+    "inputcfg",
+    "epsilon2",
+    "davidson",
+    "direct",
+    "task",
+    "dumprdm",
+    "relative",
+    "ewin_ini",
+    "selection",
+    "print",
+    "doublegroup",
+    "prune"]
+
 
 def _Generate_InputFile_iCI(inputfilename,
                             Segment,
@@ -73,6 +55,7 @@ def _Generate_InputFile_iCI(inputfilename,
     if direct is not None:
         inputfile.write("direct=%d\n" % (direct))
     inputfile.close()
+
 
 def _generate_task_spinarray_weight(state):
     res = ""
