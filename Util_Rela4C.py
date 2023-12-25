@@ -99,7 +99,7 @@ def FCIDUMP_Original_Ints(mol, my_RDHF):
                     hcore[i][j].real, hcore[i][j].imag, i+1, j+1, 0, 0))
 
 
-def _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="s1"):
+def _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="s1", tol=1e-8):
     """ Dump the 2-electron integrals in FCIDUMP format
 
     Args:
@@ -116,7 +116,7 @@ def _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="
 
     """
 
-    tol = 1e-10
+    # tol = 1e-10
     n2c = int2e_coulomb.shape[0]
 
     if symmetry == "s1":
@@ -176,7 +176,7 @@ def _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="
         raise ValueError("Unknown symmetry %s" % symmetry)
 
 
-def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="incore", orbsym_ID=None, IsComplex=True, debug=False):
+def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="incore", orbsym_ID=None, IsComplex=True, tol=1e-8, debug=False):
     """ Dump the relativistic 4-component integrals in FCIDUMP format
 
     Args:
@@ -315,33 +315,9 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
         # output_format = float_format + float_format + ' %4d %4d %4d %4d\n'
         if int2e_coulomb.ndim == 4:
             if debug:
-                # for i in range(n2c):
-                #     for j in range(n2c):
-                #         for k in range(n2c):
-                #             for l in range(n2c):
-                #                 if abs(int2e_coulomb[i][j][k][l]) > tol:
-                #                     fout.write(output_format % (
-                #                         int2e_coulomb[i][j][k][l].real, int2e_coulomb[i][j][k][l].imag, i+1, j+1, k+1, l+1))
-                #                 if with_breit:
-                #                     if abs(int2e_breit[i][j][k][l]) > tol:
-                #                         fout.write(output_format % (
-                #                             int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
-                _dump_2e(fout, int2e_coulomb, int2e_breit,
-                         with_breit, IsComplex, symmetry="s1")
+                _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="s1", tol=tol)
             else:
-                # for i in range(n2c):
-                #     for j in range(i+1):
-                #         for k in range(i+1):
-                #             for l in range(n2c):
-                #                 if abs(int2e_coulomb[i][j][k][l]) > tol:
-                #                     fout.write(output_format % (
-                #                         int2e_coulomb[i][j][k][l].real, int2e_coulomb[i][j][k][l].imag, i+1, j+1, k+1, l+1))
-                #                 if with_breit:
-                #                     if abs(int2e_breit[i][j][k][l]) > tol:
-                #                         fout.write(output_format % (
-                #                             int2e_breit[i][j][k][l].real, int2e_breit[i][j][k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
-                _dump_2e(fout, int2e_coulomb, int2e_breit,
-                         with_breit, IsComplex, symmetry="s4")
+                _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="s4", tol=tol)
         elif int2e_coulomb.ndim == 2:
             raise NotImplementedError("2-fold symmetry is not implemented yet")
             npair = n2c * (n2c + 1) // 2
@@ -490,10 +466,56 @@ def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
 
     ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
 
-    ######### the first step is to reorder the orb so that the TR seems to be addapted! #########
 
-    tr_act = reduce(numpy.dot, (mo_coeff.T.conj(), ovlp_4C,
-                    time_reversal_m, mo_coeff.conj()))
+    ######### the first step is to rotate the orb so that the TR is really to be addapted! #########
+
+    Res = mo_coeff.copy()
+
+    idxA_all = numpy.hstack((idxA, idxA+n))
+    ovlp_A = ovlp_4C[idxA_all, :][:, idxA_all]
+
+    for i in range(0, 2*n, 2):
+        mo_coeff_A = Res[idxA_all, i]
+        norm_A = reduce(numpy.dot, (mo_coeff_A.T.conj(), ovlp_A, mo_coeff_A))
+        if norm_A < 0.5:
+            if debug:
+                # print("norm_A = ", norm_A)
+            # swap i and i+1
+                print("swap %d and %d" % (i, i+1))
+            # Res[:, i] = -Res[:, i]
+            tmp = Res[:, i].copy()
+            Res[:, i] = Res[:, i+1]
+            Res[:, i+1] = tmp
+            # if debug:
+            #     print(Res[idx2, i:i+2])
+        
+        ### real orbital ###
+            
+        mo_coeff_A = Res[:, i]
+        real_A = mo_coeff_A.real
+        norm_real = numpy.linalg.norm(real_A)
+        imag_A = mo_coeff_A.imag
+        norm_imag = numpy.linalg.norm(imag_A)
+        if norm_imag > norm_real:
+            print("times i at ", i)
+            print("norm_imag = ", norm_imag)
+            print("norm_real = ", norm_real)
+            Res[:, i] = -1.0j * Res[:, i]
+
+        mo_coeff_B = Res[:, i+1]
+        real_B = mo_coeff_B.real
+        norm_real = numpy.linalg.norm(real_B)
+        imag_B = mo_coeff_B.imag
+        norm_imag = numpy.linalg.norm(imag_B)
+        if norm_imag > norm_real:
+            print("times i at ", i+1)
+            print("norm_imag = ", norm_imag)
+            print("norm_real = ", norm_real)
+            Res[:, i+1] = -1.0j * Res[:, i+1]
+
+    ######### the second step is to reorder the orb so that the TR seems to be addapted! #########
+
+    tr_act = reduce(numpy.dot, (Res.T.conj(), ovlp_4C, time_reversal_m, Res.conj()))
     tr_act_packed = []
     for i in range(tr_act.shape[0]):
         for j in range(tr_act.shape[1]):
@@ -502,334 +524,57 @@ def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
                     print("tr_act = ", i, j, tr_act[i, j])
                 tr_act_packed.append([j, tr_act[i, j]])
 
-    Res = mo_coeff.copy()
-
-    idxA_all = numpy.hstack((idxA, idxA+n))
-    ovlp_A = ovlp_4C[idxA_all, :][:, idxA_all]
-
     for i in range(0, 2*n, 2):
         if tr_act_packed[i][0] != i+1:
             print("Error in time reversal symmetry")
             exit(1)
-
         if tr_act_packed[i][1] < 0.0:
             if debug:
-                print("swap %d and %d" % (i, i+1))
-            # swap i and i+1
-            tmp = Res[:, i].copy()
-            Res[:, i] = Res[:, i+1]
-            Res[:, i+1] = tmp
-            if debug:
-                print(Res[idx2, i:i+2])
-
-        # mo_coeff_A = Res[idxA_all, i]
-        # norm_A = reduce(numpy.dot, (mo_coeff_A.T.conj(), ovlp_A, mo_coeff_A))
-        # if norm_A < 0.5:
-        #     if debug:
-        #         print("swap %d and %d" % (i, i+1))
-        #         print("norm_A = ", norm_A)
-        #     # swap i and i+1
-        #     tmp = Res[:, i].copy()
-        #     Res[:, i] = Res[:, i+1]
-        #     Res[:, i+1] = tmp
-        #     if debug:
-        #         print(Res[idx2, i:i+2])
-
-    ######### the second step is to rotate the orb so that the TR is really to be addapted! #########
-
-    for i in range(0, 2*n, 2):
-        mo_coeff_A = Res[idxA_all, i]
-        norm_A = reduce(numpy.dot, (mo_coeff_A.T.conj(), ovlp_A, mo_coeff_A))
-        if norm_A < 0.5:
-            if debug:
-                print("norm_A = ", norm_A)
-            # swap i and i+1
-            Res[:, i] = -Res[:, i]
-            tmp = Res[:, i].copy()
-            Res[:, i] = Res[:, i+1]
-            Res[:, i+1] = tmp
-            if debug:
-                print(Res[idx2, i:i+2])
+                print("plus -1 between %d and %d" % (i, i+1))
+            Res[:, i+1] *= -1.0
 
     return Res
-
-
-PARITY = {
-    "s": 0,
-    "p": 1,
-    "d": 0,
-    "f": 1,
-    "g": 0,
-    "h": 1,
-    "i": 0,
-}
-
-
-def _atom_spinor_spatial_parity(mol, mo_coeff, debug=False):
-    """ Calculate the parity of the molecular orbitals
-
-    Args:
-        mol: a molecule object
-        mo_coeff: the molecular orbital coefficients
-
-    Kwargs:
-        debug: whether to print the details
-
-    Returns:
-        Res: the parity of the molecular orbitals
-
-    """
-
-    labels = mol.spinor_labels()
-    if debug:
-        print(labels)
-
-    n = mol.nao_2c()
-    parity = []
-    for i in range(n):
-        for key in PARITY.keys():
-            if key in labels[i]:
-                parity.append(PARITY[key])
-                break
-
-    if debug:
-        print("parity = ", parity)
-
-    # add 4C's partity
-
-    def _reverse_parity(parity):
-        if parity == 0:
-            return 1
-        else:
-            return 0
-
-    parity_small = [_reverse_parity(x) for x in parity]
-
-    # parity.extend(parity_small)
-    parity.extend(parity)
-
-    # extract parity of the mo_coeff
-
-    # the order of AO is first large component then small component
-    ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
-
-    pairty_even = [id for id, x in enumerate(parity) if x == 0]
-    parity_odd = [id for id, x in enumerate(parity) if x == 1]
-
-    ovlp_even = ovlp_4C[pairty_even, :][:, pairty_even]
-    ovlp_odd = ovlp_4C[parity_odd, :][:, parity_odd]
-
-    # e, h = numpy.linalg.eigh(ovlp_even)
-    # print("e = ", e)
-    # e, h = numpy.linalg.eigh(ovlp_odd)
-    # print("e = ", e)
-
-    if debug:
-        ovlp_cross = ovlp_4C[pairty_even, :][:,
-                                             parity_odd]  # should all be zero
-        print("ovlp_cross should be zero")
-        print(ovlp_cross.shape)
-        print(ovlp_cross)
-        print(numpy.allclose(ovlp_cross, numpy.zeros_like(ovlp_cross)))
-        print("pairty_even = ", pairty_even)
-
-    # loop each orb and find their parity
-
-    Res = []
-    for i in range(mo_coeff.shape[1]):
-        mo_coeff_A = mo_coeff[:, i].reshape(-1, 1)
-        print("mo_coeff_A.shape = ", mo_coeff_A.shape)
-        print("mo_coeff_A[pairty_even] = ", mo_coeff_A[pairty_even].shape)
-        norm_even = reduce(
-            numpy.dot, (mo_coeff_A[pairty_even].T.conj(), ovlp_even, mo_coeff_A[pairty_even]))
-        norm_odd = reduce(
-            numpy.dot, (mo_coeff_A[parity_odd].T.conj(), ovlp_odd, mo_coeff_A[parity_odd]))
-        if norm_even < norm_odd:
-            Res.append(1)
-        else:
-            Res.append(0)
-        if debug:
-            print("norm_even = ", norm_even, " norm_odd = ", norm_odd)
-            print("Res = ", Res[-1])
-    return Res
-
-
-def _atom_Jz_adapted(mol, mo_coeff, mo_energy, debug=False):
-    """ Adapt the molecular orbital coefficients to the Jz symmetry
-
-    Args:
-        mol: a molecule object
-        mo_coeff: the molecular orbital coefficients
-        mo_energy: the molecular orbital energies
-
-    Kwargs:
-        debug: whether to print the details
-
-    Returns:
-
-    """
-
-    labels = mol.spinor_labels()
-    if debug:
-        print(labels)
-    n = mol.nao_2c()
-    Jz = numpy.zeros((2*n, 2*n), dtype=numpy.complex128)
-    # parity = []
-    for i in range(n):
-        sz_str = labels[i].split(",")[1]
-        # for key in PARITY.keys():
-        #     if key in labels[i]:
-        #         parity.append(PARITY[key])
-        #         break
-        for j in range(len(sz_str)):
-            if sz_str[j] == " ":
-                sz_str = sz_str[:j]
-                break
-        a, b = sz_str.split("/")
-        Jz[i, i] = float(int(a)/int(b))
-        Jz[i+n, i+n] = float(int(a)/int(b))
-
-    if debug:
-        print("Jz     = ", Jz)
-        # print("parity = ", parity)
-
-    # the order of AO is first large component then small component
-    ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
-
-    loc = 0
-
-    permute = []
-
-    Res = mo_coeff.copy()
-
-    while True:
-
-        ene_now = mo_energy[loc]
-        loc_end = None
-        for i in range(loc, mo_coeff.shape[1]):
-            if abs(mo_energy[i] - ene_now) > 1e-5:
-                loc_end = i
-                break
-
-        if debug:
-            print("loc = ", loc, " loc_end = ",
-                  loc_end, " ene_now = ", ene_now)
-            print("mo_energy[loc:loc_end] = ", mo_energy[loc:loc_end])
-
-        if loc_end is None:
-            loc_end = mo_coeff.shape[1]
-
-        norb = loc_end - loc
-
-        mo_coeff_tmp = mo_coeff[:, loc:loc_end]
-        Jz_Tmp = reduce(numpy.dot, (mo_coeff_tmp.T.conj(),
-                        ovlp_4C, Jz, mo_coeff_tmp))
-        e, h = numpy.linalg.eigh(Jz_Tmp)
-
-        if debug:
-            print("Jz_Tmp = ", Jz_Tmp)
-            print("e = ", e)
-
-        # rotate the orbitals
-
-        Res[:, loc:loc_end] = numpy.dot(mo_coeff_tmp, h)
-
-        for i in range(norb // 2):
-            permute.append(loc + norb - 1 - i)
-            permute.append(loc + i)
-
-        if i % 2 == 1:
-            if debug:
-                print("--------------------")
-
-        loc = loc_end
-
-        if debug:
-            print("loc = ", loc)
-            print("mf.mo_coeff.shape[1] = ", Res.shape[1])
-
-        if loc == mo_coeff.shape[1]:
-            break
-
-    if debug:
-        print("permute = ", permute)
-
-    Res = Res[:, permute]
-
-    if debug:
-        ovlp_mo = reduce(numpy.dot, (Res.T.conj(), ovlp_4C, Res))
-        print("ovlp_mo = ", numpy.diag(ovlp_mo))
-
-        Jz_mo = reduce(numpy.dot, (Res.T.conj(), ovlp_4C, Jz, Res))
-        print("Jz_mo = ", numpy.diag(Jz_mo)[n:])
-
-    return Res
-
-
-def FCIDUMP_Rela4C_SU2(mol, my_RDHF, with_breit=False, filename="fcidump", mode="incore", debug=False):
-
-    ######## adapt the molecular orbitals to the Jz symmetry and tr symmetry ########
-
-    mo_coeff = _atom_Jz_adapted(
-        mol, my_RDHF.mo_coeff, my_RDHF.mo_energy, debug=debug)
-    mo_coeff = _time_reversal_symmetry_adapted(mol, mo_coeff, debug=debug)
-    mo_parity = _atom_spinor_spatial_parity(mol, mo_coeff, debug=debug)
-
-    mo_parity = [x for id, x in enumerate(mo_parity) if id % 2 == 0]
-
-    FCIDUMP_Rela4C(mol, my_RDHF, with_breit=with_breit, filename=filename,
-                   mode=mode, orbsym_ID=mo_parity, IsComplex=False, debug=debug)
 
 
 if __name__ == "__main__":
     # mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
-    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5, charge=-1, spin=0)
-    # mf = scf.RHF(mol)
-    # mf.kernel()
-    # mf.analyze()
+    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5, charge=-1, spin=0, symmetry="d2h")
+    mol.build()
     mf = scf.dhf.RDHF(mol)
     mf.conv_tol = 1e-12
     mf.kernel()
 
-    # mf.with_gaunt = True
-    # mf.kernel()
-
     mf.with_breit = True
     mf.kernel()
 
-    trmaps = mol.time_reversal_map()
-    idxA = numpy.where(trmaps > 0)[0]
-    idxB = trmaps[idxA] - 1
-    n = trmaps.size
-    idx2 = numpy.hstack((idxA, idxA+n, idxB, idxB+n))
+    fock = mf.get_fock()
+
+    print("mo_ene = ", mf.mo_energy)
+
     ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
 
-    mf.mo_coeff = _atom_Jz_adapted(mol, mf.mo_coeff, mf.mo_energy, debug=True)
+    e, mo_coeff = mf._eigh(fock, ovlp_4C)
 
-    mf.mo_coeff = _time_reversal_symmetry_adapted(mol, mf.mo_coeff, debug=True)
+    print("mo_ene = ", e)
 
-    # Jz_mo = reduce(numpy.dot, (mf.mo_coeff.T.conj(), ovlp_4C, Jz, mf.mo_coeff))
-    # print("Jz_mo = ", numpy.diag(Jz_mo)[n:])
+    print(numpy.allclose(mf.mo_energy, e))
+    print(numpy.allclose(mf.mo_coeff, mo_coeff))
 
-    # print(mf.mo_coeff[idx2, mol.nao_2c() +  5 - 1])
-    # print(mf.mo_coeff[idx2, mol.nao_2c() +  6 - 1])
-    # print(mf.mo_coeff[idx2, mol.nao_2c() +  7 - 1])
-    # print(mf.mo_coeff[idx2, mol.nao_2c() +  8 - 1])
-    # print(mf.mo_coeff[idx2, mol.nao_2c() +  9 - 1])
-    # print(mf.mo_coeff[idx2, mol.nao_2c() + 10 - 1])
-    # print(mf.mo_coeff[idx2, mol.nao_2c() + 11 - 1])
-    # print(mf.mo_coeff[idx2, mol.nao_2c() + 12 - 1])
-    # print(mf.mo_coeff[idx2, mol.nao_2c() + 13 - 1])
-    # print(mf.mo_coeff[idx2, mol.nao_2c() + 14 - 1])
+    _apply_time_reversal_op(mol, mo_coeff, True)
 
-    Res = _apply_time_reversal_op(mol, mf.mo_coeff, True)
+    mf.mo_coeff = mo_coeff
 
-    for ix, data in enumerate(Res):
-        print(ix, " = ", data)
+    print(mol.symm_orb)
+    print(mol.irrep_id)
 
-    mo_parity = _atom_spinor_spatial_parity(mol, mf.mo_coeff, debug=True)
+    sym_orb = numpy.concatenate([mol.symm_orb[0], mol.symm_orb[1]], axis=1)
+    for i in range(2, len(mol.symm_orb)):
+        sym_orb = numpy.concatenate([sym_orb, mol.symm_orb[i]], axis=1)
 
-    print("mo_parity = ", mo_parity[n:])
+    from pyscf import symm
+    orbsym_ID = symm.label_orb_symm(mol, mol.irrep_id, mol.symm_orb, sym_orb)
+
+    print(orbsym_ID)
 
     # exit(1)
 
@@ -839,13 +584,11 @@ if __name__ == "__main__":
     int2e2, breit_2 = FCIDUMP_Rela4C(
         mol, mf, with_breit=True, filename="FCIDUMP_4C_incore", mode="incore", debug=False)
 
-    # int2e2, breit_2 = FCIDUMP_Rela4C(
-    #     mol, mf, with_breit=False, filename="FCIDUMP_4C_incore", mode="incore", debug=True)
 
-    FCIDUMP_Rela4C_SU2(mol, mf, with_breit=True,
-                       filename="FCIDUMP_4C_SU2", mode="incore", debug=False)
-
-    exit(1)
+    for i in range(mol.nao_2c(), mol.nao_2c()*2):
+        for j in range(mf.mo_coeff.shape[0]):
+            if abs(mf.mo_coeff[j, i]) > 1e-6:
+                print("%4d %4d %15.8f %15.8f" % (i-mol.nao_2c()+1, j, mf.mo_coeff[j, i].real, mf.mo_coeff[j, i].imag))
 
     # FCIDUMP_Rela4C(mol, mf, filename="FCIDUMP_4C_incore2", mode="incore")
 
@@ -853,18 +596,6 @@ if __name__ == "__main__":
 
     if breit_1 is not None:
         print("breit diff = ", numpy.linalg.norm(breit_1 - breit_2))
-
-    # mf = scf.hf.RHF(mol)
-
-    # mf.kernel()
-
-    # nao = mf.mo_coeff.shape[1]
-    # print(mf.mo_energy[nao//2:])
-    # for i in range(nao//2, nao):
-    #     print("nao %d" % i)
-    #     for j in range(nao):
-    #         if abs(mf.mo_coeff[i, j]) > 1e-6:
-    #             print("%4d %15.8f %15.8f" % (j, mf.mo_coeff[i, j].real, mf.mo_coeff[i, j].imag))
 
     #### check the time-reversal symmetry of the orbitals ####
 
@@ -975,12 +706,3 @@ if __name__ == "__main__":
                         print("Breit BAAB group is not time-reversal symmetric")
                         print(breit_1[2*i+1, 2*j, 2*k, 2*l+1], breit_1[2*i+1, 2*j, 2*l, 2*k+1],
                               breit_1[2*j+1, 2*i, 2*k, 2*l+1], breit_1[2*j+1, 2*i, 2*l, 2*k+1])
-
-    # FCIDUMP_Original_Ints(mol, mf)
-    # overlap = mf.get_ovlp()
-    # print("overlap")
-    # for i in range(overlap.shape[0]):
-    #     for j in range(overlap.shape[1]):
-    #         if abs(overlap[i, j]) > 1e-8:
-    #             print("%4d %4d %15.8f %15.8f" %
-    #                   (i, j, overlap[i, j].real, overlap[i, j].imag))
