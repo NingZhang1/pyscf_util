@@ -513,6 +513,8 @@ def atm_d2h_symmetry_adapt_mo_coeff(mol, mo_coeff, debug=False):
 
     # time reversal adapted
 
+    # first switch the comp
+
     for i in range(0, mo_coeff_over_adapted_spinor.shape[1], 2):
         coeff_tmp1 = mo_coeff_over_adapted_spinor[:, i]
 
@@ -535,24 +537,38 @@ def atm_d2h_symmetry_adapt_mo_coeff(mol, mo_coeff, debug=False):
             mo_pes[:, i] = mo_pes[:, i+1]
             mo_pes[:, i+1] = tmp
 
-        # enforce Time reversal symmetry
+        # # enforce Time reversal symmetry
+        # coeff_A = mo_coeff_over_adapted_spinor[indA, i]
+        # coeff_B = mo_coeff_over_adapted_spinor[indB, i+1]
+        # inner_prod = numpy.dot(coeff_A.T, coeff_B)
+        # if debug:
+        #     print("inner_prod = ", inner_prod)
+        # if abs(inner_prod) < 1e-8:
+        #     print(coeff_A)
+        #     print(coeff_B)
+        #     raise ValueError("Time reversal symmetry is not satisfied")
+        # if inner_prod < 0.0:
+        #     mo_coeff_over_adapted_spinor[:, i+1] *= -1.0
+        #     mo_pes[:, i+1] *= -1.0
 
-        coeff_A = mo_coeff_over_adapted_spinor[indA, i]
-        coeff_B = mo_coeff_over_adapted_spinor[indB, i+1]
+    # second the sign problem
 
-        inner_prod = numpy.dot(coeff_A.T, coeff_B)
+    from Util_Rela4C import _apply_time_reversal_op
 
-        if debug:
-            print("inner_prod = ", inner_prod)
+    tr_mat = _apply_time_reversal_op(mol, mo_pes, debug=debug)
 
-        if abs(inner_prod) < 1e-8:
-            print(coeff_A)
-            print(coeff_B)
-            raise ValueError("Time reversal symmetry is not satisfied")
+    # print("tr_mat = ", tr_mat)
+    print("mo_pes.shape = ", mo_pes.shape)
 
-        if inner_prod < 0.0:
-            mo_coeff_over_adapted_spinor[:, i+1] *= -1.0
-            mo_pes[:, i+1] *= -1.0
+    for i in range(0, mo_pes.shape[1], 2):
+        assert (tr_mat[i][0] == i+1)
+        if abs(tr_mat[i][1].real + 1) < 1e-4:
+            if debug:
+                print("swap the sign of the orbitals ", i+1)
+            mo_pes[:, i+1] *= -1.0 # 
+
+    if debug:
+        _apply_time_reversal_op(mol, mo_pes, debug=debug)
 
     # generate new mo_coeff
 
@@ -590,7 +606,12 @@ def FCIDUMP_Rela4C_SU2(mol, my_RDHF, with_breit=False, filename="fcidump", mode=
     coulomb, breit = FCIDUMP_Rela4C(mol, my_RDHF, with_breit=with_breit, filename=filename,
                                     mode=mode, orbsym_ID=mo_parity, IsComplex=False, debug=debug)
 
-    return coulomb, breit, mo_parity
+    if debug:
+        FCIDUMP_Rela4C(mol, my_RDHF, with_breit=with_breit, filename=filename+"_complex",
+                       mode=mode, orbsym_ID=None, IsComplex=True, debug=debug)
+
+    return coulomb, breit, mo_parity, mo_coeff
+
 
 if __name__ == "__main__":
     # mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
@@ -599,7 +620,15 @@ if __name__ == "__main__":
     mol.build()
     mf = scf.dhf.RDHF(mol)
     mf.conv_tol = 1e-12
+    mf.with_breit = True
     mf.kernel()
+
+    # the benchmark
+
+    # _, _ = FCIDUMP_Rela4C(
+    #     mol, mf, with_breit=True, filename="FCIDUMP_4C_Breit", mode="original", debug=False)
+    # _, _ = FCIDUMP_Rela4C(
+    #     mol, mf, with_breit=True, filename="FCIDUMP_4C_Breit2", mode="incore", debug=False)
 
     fock = mf.get_fock()
 
@@ -729,13 +758,43 @@ if __name__ == "__main__":
 
     ################## test the symmetry adapted basis ####################
 
-    int_coulomb, int_breit, mo_parity = FCIDUMP_Rela4C_SU2(
+    int_coulomb, int_breit, mo_parity, mo_coeff_adapted = FCIDUMP_Rela4C_SU2(
         mol, mf, with_breit=True, filename="fcidump_adapted", mode="incore", debug=True)
 
     n2c = mol.nao_2c()
 
     mo_parity = mo_parity[n2c//2:]
     print("mo_parity = ", mo_parity)
+
+    ############## check the orbital ####################
+
+    fock = mf.get_fock()
+    print("mo_ene = ", mf.mo_energy)
+    ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
+    e, mo_coeff = mf._eigh(fock, ovlp_4C)
+    print("mo_ene = ", e)
+
+    mo_coeff_backup = mf.mo_coeff.copy()
+
+    mf.mo_coeff = mo_coeff_adapted
+    fock = mf.get_fock()
+    print("mo_ene = ", mf.mo_energy)
+    ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
+    e, mo_coeff = mf._eigh(fock, ovlp_4C)
+    print("mo_ene = ", e)
+
+    ovlp_mo = reduce(numpy.dot, (mo_coeff_adapted.T.conj(),
+                     ovlp_4C, mo_coeff_adapted))
+    print("ovlp_mo = ", numpy.diag(ovlp_mo))
+    print(numpy.allclose(ovlp_mo, numpy.eye(ovlp_mo.shape[0])))
+
+    print("norm_real = ", numpy.linalg.norm(mo_coeff_adapted.real))
+    print("norm_imag = ", numpy.linalg.norm(mo_coeff_adapted.imag))
+
+    print("norm_real = ", numpy.linalg.norm(mo_coeff_backup.real))
+    print("norm_imag = ", numpy.linalg.norm(mo_coeff_backup.imag))
+
+    # check TR
 
     # exit(1)
 
@@ -747,7 +806,7 @@ if __name__ == "__main__":
                     bar_j = j % 2
                     bar_k = k % 2
                     bar_l = l % 2
-                    
+
                     sum_tmp = bar_i + bar_j + bar_k + bar_l
 
                     int1 = int_coulomb[i, j, k, l]
@@ -769,6 +828,4 @@ if __name__ == "__main__":
 
                         if scalar_i ^ scalar_j ^ scalar_k ^ scalar_l != 0:
                             print("parity not satisfied ", i, j, k, l,
-                                scalar_i, scalar_j, scalar_k, scalar_l)
-
-                   
+                                  scalar_i, scalar_j, scalar_k, scalar_l)
