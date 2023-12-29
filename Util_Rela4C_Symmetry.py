@@ -532,24 +532,9 @@ def atm_d2h_symmetry_adapt_mo_coeff(mol, mo_coeff, debug=False):
                                          i] = mo_coeff_over_adapted_spinor[:, i+1]
             mo_coeff_over_adapted_spinor[:, i+1] = coeff_tmp1
             # swap mo_pes
-            # tmp = mo_pes[:, i]
             tmp = copy.deepcopy(mo_pes[:, i])
             mo_pes[:, i] = mo_pes[:, i+1]
             mo_pes[:, i+1] = tmp
-
-        # # enforce Time reversal symmetry
-        # coeff_A = mo_coeff_over_adapted_spinor[indA, i]
-        # coeff_B = mo_coeff_over_adapted_spinor[indB, i+1]
-        # inner_prod = numpy.dot(coeff_A.T, coeff_B)
-        # if debug:
-        #     print("inner_prod = ", inner_prod)
-        # if abs(inner_prod) < 1e-8:
-        #     print(coeff_A)
-        #     print(coeff_B)
-        #     raise ValueError("Time reversal symmetry is not satisfied")
-        # if inner_prod < 0.0:
-        #     mo_coeff_over_adapted_spinor[:, i+1] *= -1.0
-        #     mo_pes[:, i+1] *= -1.0
 
     # second the sign problem
 
@@ -557,15 +542,14 @@ def atm_d2h_symmetry_adapt_mo_coeff(mol, mo_coeff, debug=False):
 
     tr_mat = _apply_time_reversal_op(mol, mo_pes, debug=debug)
 
-    # print("tr_mat = ", tr_mat)
-    print("mo_pes.shape = ", mo_pes.shape)
+    # print("mo_pes.shape = ", mo_pes.shape)
 
     for i in range(0, mo_pes.shape[1], 2):
         assert (tr_mat[i][0] == i+1)
         if abs(tr_mat[i][1].real + 1) < 1e-4:
             if debug:
                 print("swap the sign of the orbitals ", i+1)
-            mo_pes[:, i+1] *= -1.0 # 
+            mo_pes[:, i+1] *= -1.0
 
     if debug:
         _apply_time_reversal_op(mol, mo_pes, debug=debug)
@@ -829,3 +813,6 @@ if __name__ == "__main__":
                         if scalar_i ^ scalar_j ^ scalar_k ^ scalar_l != 0:
                             print("parity not satisfied ", i, j, k, l,
                                   scalar_i, scalar_j, scalar_k, scalar_l)
+
+    int_coulomb, int_breit, mo_parity, mo_coeff_adapted = FCIDUMP_Rela4C_SU2(
+        mol, mf, with_breit=True, filename="fcidump_adapted_outcore", mode="outcore", debug=True)

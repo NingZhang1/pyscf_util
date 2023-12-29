@@ -7,6 +7,13 @@ import pyscf
 
 import re
 
+from pyscf import __config__
+
+IOBLK_SIZE = getattr(__config__, 'ao2mo_outcore_ioblk_size', 256)  # 256 MB
+IOBUF_WORDS = getattr(__config__, 'ao2mo_outcore_iobuf_words', 1e8)  # 1.6 GB
+IOBUF_ROW_MIN = getattr(__config__, 'ao2mo_outcore_row_min', 160)
+MAX_MEMORY = getattr(__config__, 'ao2mo_outcore_max_memory', 4000)  # 4GB
+
 """
 
 Util_Rela4C.py is a module for generating integral files for Relativistic 4-component calculation.
@@ -62,15 +69,19 @@ def FCIDUMP_Original_Ints(mol, my_RDHF):
         (n4c, n4c, n4c, n4c), dtype=numpy.complex128)
 
     ##### (LS|LS) and (SL|SL) #####
+
     tmp = mol.intor("int2e_breit_ssp1ssp2_spinor") * c1**2
     int2e_breit[:n2c, n2c:, :n2c, n2c:] = tmp
     tmp = mol.intor("int2e_breit_sps1sps2_spinor") * c1**2
     int2e_breit[n2c:, :n2c, n2c:, :n2c] = tmp
+
     ##### (LS|SL) and (SL|LS) #####
+
     tmp2 = mol.intor("int2e_breit_ssp1sps2_spinor") * c1**2
     int2e_breit[:n2c, n2c:, n2c:, :n2c] = tmp2  # (LS|SL)
     tmp2 = mol.intor("int2e_breit_sps1ssp2_spinor") * c1**2
     int2e_breit[n2c:, :n2c, :n2c, n2c:] = tmp2  # (SL|LS)
+
     ###############################
 
     print("Coulomb term")
@@ -98,9 +109,243 @@ def FCIDUMP_Original_Ints(mol, my_RDHF):
                 print("%18.12E %18.12E %4d %4d %4d %4d" % (
                     hcore[i][j].real, hcore[i][j].imag, i+1, j+1, 0, 0))
 
+### filename ###
+
+
+coulomb_LLLL = "%s_coulomb_LLLL.h5"
+coulomb_SSSS = "%s_coulomb_SSSS.h5"
+coulomb_LLSS = "%s_coulomb_LLSS.h5"
+coulomb_SSLL = "%s_coulomb_SSLL.h5"
+
+breit_LSLS = "%s_breit_LSLS.h5"
+breit_SLSL = "%s_breit_SLSL.h5"
+breit_LSSL = "%s_breit_LSSL.h5"
+breit_SLLS = "%s_breit_SLLS.h5"
+
+
+def _r_outcore_Coulomb(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
+
+    from pyscf.ao2mo import r_outcore
+
+    n2c = mol.nao_2c()
+    mo_coeff = my_RDHF.mo_coeff
+    mo_coeff_mat = numpy.matrix(mo_coeff)
+
+    mo_coeff_pes = mo_coeff_mat[:, n2c:]
+    mo_coeff_L = mo_coeff_pes[:n2c, :]
+    mo_coeff_S = mo_coeff_pes[n2c:, :]
+
+    r_outcore.general(mol, (mo_coeff_L, mo_coeff_L, mo_coeff_L, mo_coeff_L), coulomb_LLLL %
+                      prefix, intor="int2e_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (mo_coeff_S, mo_coeff_S, mo_coeff_S, mo_coeff_S), coulomb_SSSS %
+                      prefix, intor="int2e_spsp1spsp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (mo_coeff_L, mo_coeff_L, mo_coeff_S, mo_coeff_S), coulomb_LLSS %
+                      prefix, intor="int2e_spsp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (mo_coeff_S, mo_coeff_S, mo_coeff_L, mo_coeff_L), coulomb_SSLL %
+                      prefix, intor="int2e_spsp1_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+
+
+def _r_outcore_Breit(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
+
+    from pyscf.ao2mo import r_outcore
+
+    n2c = mol.nao_2c()
+    mo_coeff = my_RDHF.mo_coeff
+    mo_coeff_mat = numpy.matrix(mo_coeff)
+
+    mo_coeff_pes = mo_coeff_mat[:, n2c:]
+    mo_coeff_L = mo_coeff_pes[:n2c, :]
+    mo_coeff_S = mo_coeff_pes[n2c:, :]
+
+    r_outcore.general(mol, (mo_coeff_L, mo_coeff_S, mo_coeff_L, mo_coeff_S), breit_LSLS %
+                      prefix, intor="int2e_breit_ssp1ssp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (mo_coeff_S, mo_coeff_L, mo_coeff_S, mo_coeff_L), breit_SLSL %
+                      prefix, intor="int2e_breit_sps1sps2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (mo_coeff_L, mo_coeff_S, mo_coeff_S, mo_coeff_L), breit_LSSL %
+                      prefix, intor="int2e_breit_ssp1sps2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (mo_coeff_S, mo_coeff_L, mo_coeff_L, mo_coeff_S), breit_SLLS %
+                      prefix, intor="int2e_breit_sps1ssp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+
+
+def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", tol=1e-8):
+
+    import h5py
+
+    feri_coulomb_LLLL = h5py.File(coulomb_LLLL % prefix, 'r')
+    feri_coulomb_LLSS = h5py.File(coulomb_LLSS % prefix, 'r')
+    feri_coulomb_SSLL = h5py.File(coulomb_SSLL % prefix, 'r')
+    feri_coulomb_SSSS = h5py.File(coulomb_SSSS % prefix, 'r')
+
+    if with_breit:
+        feri_breit_LSLS = h5py.File(breit_LSLS % prefix, 'r')
+        feri_breit_SLSL = h5py.File(breit_SLSL % prefix, 'r')
+        feri_breit_LSSL = h5py.File(breit_LSSL % prefix, 'r')
+        feri_breit_SLLS = h5py.File(breit_SLLS % prefix, 'r')
+    else:
+        feri_breit_LSLS = None
+        feri_breit_SLSL = None
+        feri_breit_LSSL = None
+        feri_breit_SLLS = None
+
+    c1 = .5 / lib.param.LIGHT_SPEED
+
+    if symmetry == "s1":
+        if IsComplex:
+            for i in range(n2c):
+                for j in range(n2c):
+
+                    ij = i * n2c + j
+
+                    eri_coulomb = numpy.array(
+                        feri_coulomb_LLLL['eri_mo'][ij]).reshape(n2c, n2c)
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_LLSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_SSLL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_SSSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**4
+
+                    if with_breit:
+                        eri_breit = numpy.array(
+                            feri_breit_LSLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_SLSL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_LSSL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+
+                    for k in range(n2c):
+                        for l in range(n2c):
+                            if abs(eri_coulomb[k][l]) > tol:
+                                fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
+                                    eri_coulomb[k][l].real, eri_coulomb[k][l].imag, i+1, j+1, k+1, l+1))
+                            if with_breit:
+                                if abs(eri_breit[k][l]) > tol:
+                                    fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
+                                        eri_breit[k][l].real, eri_breit[k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
+        else:
+            for i in range(n2c):
+                for j in range(n2c):
+
+                    ij = i * n2c + j
+
+                    eri_coulomb = numpy.array(
+                        feri_coulomb_LLLL['eri_mo'][ij]).reshape(n2c, n2c)
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_LLSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_SSLL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_SSSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**4
+
+                    if with_breit:
+                        eri_breit = numpy.array(
+                            feri_breit_LSLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_SLSL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_LSSL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+
+                    for k in range(n2c):
+                        for l in range(n2c):
+                            if abs(eri_coulomb[k][l]) > tol:
+                                fout.write("%18.12E %4d %4d %4d %4d\n" % (
+                                    eri_coulomb[k][l].real, i+1, j+1, k+1, l+1))
+                            if with_breit:
+                                if abs(eri_breit[k][l]) > tol:
+                                    fout.write("%18.12E %4d %4d %4d %4d\n" % (
+                                        eri_breit[k][l].real, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
+
+    elif symmetry == "s4":
+
+        if IsComplex:
+            for i in range(n2c):
+                for j in range(i+1):
+
+                    ij = i * n2c + j
+
+                    eri_coulomb = numpy.array(
+                        feri_coulomb_LLLL['eri_mo'][ij]).reshape(n2c, n2c)
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_LLSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_SSLL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_SSSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**4
+
+                    if with_breit:
+                        eri_breit = numpy.array(
+                            feri_breit_LSLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_SLSL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_LSSL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+
+                    for k in range(i+1):
+                        for l in range(n2c):
+                            if abs(eri_coulomb[k][l]) > tol:
+                                fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
+                                    eri_coulomb[k][l].real, eri_coulomb[k][l].imag, i+1, j+1, k+1, l+1))
+                            if with_breit:
+                                if abs(eri_breit[k][l]) > tol:
+                                    fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
+                                        eri_breit[k][l].real, eri_breit[k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
+        else:
+            for i in range(n2c):
+                for j in range(i+1):
+
+                    ij = i * n2c + j
+
+                    eri_coulomb = numpy.array(
+                        feri_coulomb_LLLL['eri_mo'][ij]).reshape(n2c, n2c)
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_LLSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_SSLL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                    eri_coulomb += numpy.array(
+                        feri_coulomb_SSSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**4
+
+                    if with_breit:
+                        eri_breit = numpy.array(
+                            feri_breit_LSLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_SLSL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_LSSL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+                        eri_breit += numpy.array(
+                            feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
+
+                    for k in range(i+1):
+                        for l in range(n2c):
+                            if abs(eri_coulomb[k][l]) > tol:
+                                fout.write("%18.12E %4d %4d %4d %4d\n" % (
+                                    eri_coulomb[k][l].real, i+1, j+1, k+1, l+1))
+                            if with_breit:
+                                if abs(eri_breit[k][l]) > tol:
+                                    fout.write("%18.12E %4d %4d %4d %4d\n" % (
+                                        eri_breit[k][l].real, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
+
+    else:
+        raise ValueError("Unknown symmetry %s" % symmetry)
+
+    feri_coulomb_LLLL.close()
+    feri_coulomb_LLSS.close()
+    feri_coulomb_SSLL.close()
+    feri_coulomb_SSSS.close()
+
+    if with_breit:
+        feri_breit_LSLS.close()
+        feri_breit_SLSL.close()
+        feri_breit_LSSL.close()
+        feri_breit_SLLS.close()
 
 def _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="s1", tol=1e-8):
-    """ Dump the 2-electron integrals in FCIDUMP format
+    """ Dump the 2-electron integrals in FCIDUMP format (**incore** mode)
 
     Args:
         fout: the file object to dump the integrals
@@ -195,6 +440,8 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
 
     assert mode in ["original", "incore", "outcore"]
 
+    PREFIX = "RELA_4C_%d" % (numpy.random.randint(1, 19951201+1))
+
     n2c = mol.nao_2c()
     mo_coeff = my_RDHF.mo_coeff
     mo_coeff_mat = numpy.matrix(mo_coeff)
@@ -288,7 +535,14 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
     elif mode == "outcore":
 
         # pyscf.ao2mo.r_outcore.general
-        raise NotImplementedError("outcore mode is not implemented yet")
+        # raise NotImplementedError("outcore mode is not implemented yet")
+
+        _r_outcore_Coulomb(mol, my_RDHF, PREFIX)
+        if with_breit:
+            _r_outcore_Breit(mol, my_RDHF, PREFIX)
+
+        int2e_coulomb = None
+        int2e_breit = None
 
     else:
         raise ValueError("Unknown mode %s" % mode)
@@ -313,29 +567,43 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
         tools.fcidump.write_head(fout, nmo, nelec, ms, orbsym_ID)
 
         # output_format = float_format + float_format + ' %4d %4d %4d %4d\n'
-        if int2e_coulomb.ndim == 4:
+        # if int2e_coulomb.ndim == 4:
+
+        if mode != "outcore":
             if debug:
-                _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="s1", tol=tol)
+                _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit,
+                         IsComplex, symmetry="s1", tol=tol)
             else:
-                _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="s4", tol=tol)
-        elif int2e_coulomb.ndim == 2:
-            raise NotImplementedError("2-fold symmetry is not implemented yet")
-            npair = n2c * (n2c + 1) // 2
-            assert (int2e_coulomb.size == npair * npair)
-            ij = 0
-            for i in range(n2c):
-                for j in range(0, i+1):
-                    kl = 0
-                    for k in range(0, n2c):
-                        for l in range(0, k+1):
-                            if abs(int2e_coulomb[ij, kl]) > tol:
-                                fout.write(output_format %
-                                           (int2e_coulomb[ij, kl].real, int2e_coulomb[ij, kl].imag, i+1, j+1, k+1, l+1))
-                            kl += 1
-                    ij += 1
+                _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit,
+                         IsComplex, symmetry="s4", tol=tol)
         else:
-            raise ValueError("Unknown int2e_coulomb.ndim %d" %
-                             int2e_coulomb.ndim)
+            if debug:
+                _dump_2e_outcore(fout, n2c, PREFIX, with_breit,
+                                 IsComplex, symmetry="s1", tol=tol)
+            else:
+                _dump_2e_outcore(fout, n2c, PREFIX, with_breit,
+                                 IsComplex, symmetry="s4", tol=tol)
+
+        # elif int2e_coulomb.ndim == 2:
+        #     raise NotImplementedError("2-fold symmetry is not implemented yet")
+        #     npair = n2c * (n2c + 1) // 2
+        #     assert (int2e_coulomb.size == npair * npair)
+        #     ij = 0
+        #     for i in range(n2c):
+        #         for j in range(0, i+1):
+        #             kl = 0
+        #             for k in range(0, n2c):
+        #                 for l in range(0, k+1):
+        #                     if abs(int2e_coulomb[ij, kl]) > tol:
+        #                         fout.write(output_format %
+        #                                    (int2e_coulomb[ij, kl].real, int2e_coulomb[ij, kl].imag, i+1, j+1, k+1, l+1))
+        #                     kl += 1
+        #             ij += 1
+        # else:
+        #     raise ValueError("Unknown int2e_coulomb.ndim %d" %
+        #                      int2e_coulomb.ndim)
+
+        ############################################ DUMP E1 #############################################
 
         if IsComplex:
             output_format = float_format + float_format + ' %4d %4d  0  0\n'
@@ -356,6 +624,23 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
                         fout.write(output_format % (h1e[i, j].real, i+1, j+1))
             output_format = float_format + ' 0  0  0  0\n'
             fout.write(output_format % nuc)
+
+    ########### clean 
+
+    if mode == "outcore":
+
+        import os
+
+        os.remove(coulomb_LLLL % PREFIX)
+        os.remove(coulomb_LLSS % PREFIX)
+        os.remove(coulomb_SSLL % PREFIX)
+        os.remove(coulomb_SSSS % PREFIX)
+
+        if with_breit:
+            os.remove(breit_LSLS % PREFIX)
+            os.remove(breit_SLSL % PREFIX)
+            os.remove(breit_LSSL % PREFIX)
+            os.remove(breit_SLLS % PREFIX)
 
     if debug:
         return int2e_coulomb, int2e_breit
@@ -466,7 +751,6 @@ def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
 
     ovlp_4C = pyscf.scf.dhf.get_ovlp(mol)
 
-
     ######### the first step is to rotate the orb so that the TR is really to be addapted! #########
 
     Res = mo_coeff.copy()
@@ -480,7 +764,7 @@ def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
         if norm_A < 0.5:
             if debug:
                 # print("norm_A = ", norm_A)
-            # swap i and i+1
+                # swap i and i+1
                 print("swap %d and %d" % (i, i+1))
             # Res[:, i] = -Res[:, i]
             tmp = Res[:, i].copy()
@@ -488,9 +772,9 @@ def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
             Res[:, i+1] = tmp
             # if debug:
             #     print(Res[idx2, i:i+2])
-        
+
         ### real orbital ###
-            
+
         mo_coeff_A = Res[:, i]
         real_A = mo_coeff_A.real
         norm_real = numpy.linalg.norm(real_A)
@@ -515,7 +799,8 @@ def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
 
     ######### the second step is to reorder the orb so that the TR seems to be addapted! #########
 
-    tr_act = reduce(numpy.dot, (Res.T.conj(), ovlp_4C, time_reversal_m, Res.conj()))
+    tr_act = reduce(numpy.dot, (Res.T.conj(), ovlp_4C,
+                    time_reversal_m, Res.conj()))
     tr_act_packed = []
     for i in range(tr_act.shape[0]):
         for j in range(tr_act.shape[1]):
@@ -538,7 +823,8 @@ def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
 
 if __name__ == "__main__":
     # mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
-    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5, charge=-1, spin=0, symmetry="d2h")
+    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5,
+                charge=-1, spin=0, symmetry="d2h")
     mol.build()
     mf = scf.dhf.RDHF(mol)
     mf.conv_tol = 1e-12
@@ -579,16 +865,16 @@ if __name__ == "__main__":
     # exit(1)
 
     int2e1, breit_1 = FCIDUMP_Rela4C(
-        mol, mf, with_breit=True, filename="FCIDUMP_4C_Breit", mode="original", debug=False)
+        mol, mf, with_breit=True, filename="FCIDUMP_4C_Breit", mode="original", debug=True)
 
     int2e2, breit_2 = FCIDUMP_Rela4C(
-        mol, mf, with_breit=True, filename="FCIDUMP_4C_incore", mode="incore", debug=False)
-
+        mol, mf, with_breit=True, filename="FCIDUMP_4C_incore", mode="incore", debug=True)
 
     for i in range(mol.nao_2c(), mol.nao_2c()*2):
         for j in range(mf.mo_coeff.shape[0]):
             if abs(mf.mo_coeff[j, i]) > 1e-6:
-                print("%4d %4d %15.8f %15.8f" % (i-mol.nao_2c()+1, j, mf.mo_coeff[j, i].real, mf.mo_coeff[j, i].imag))
+                print("%4d %4d %15.8f %15.8f" % (i-mol.nao_2c()+1, j,
+                      mf.mo_coeff[j, i].real, mf.mo_coeff[j, i].imag))
 
     # FCIDUMP_Rela4C(mol, mf, filename="FCIDUMP_4C_incore2", mode="incore")
 
@@ -706,3 +992,74 @@ if __name__ == "__main__":
                         print("Breit BAAB group is not time-reversal symmetric")
                         print(breit_1[2*i+1, 2*j, 2*k, 2*l+1], breit_1[2*i+1, 2*j, 2*l, 2*k+1],
                               breit_1[2*j+1, 2*i, 2*k, 2*l+1], breit_1[2*j+1, 2*i, 2*l, 2*k+1])
+
+    ##### check out_core mode #####
+
+    def view(h5file, dataname='eri_mo'):
+        import h5py
+        f5 = h5py.File(h5file, 'r')
+        print('dataset %s, shape %s' %
+              (str(f5.keys()), str(f5[dataname].shape)))
+        f5.close()
+
+    _r_outcore_Coulomb(mol, mf, prefix="F", max_memory=5, ioblk_size=2)
+    _r_outcore_Breit(mol, mf, prefix="F", max_memory=5, ioblk_size=2)
+
+    view(coulomb_LLLL % "F")
+    view(coulomb_LLSS % "F")
+    view(coulomb_SSLL % "F")
+    view(coulomb_SSSS % "F")
+
+    view(breit_LSLS % "F")
+    view(breit_SLSL % "F")
+    view(breit_LSSL % "F")
+    view(breit_SLLS % "F")
+
+    ### check whether it is correct ###
+
+    import h5py
+
+    n = mol.nao_2c()
+    c1 = .5 / lib.param.LIGHT_SPEED
+
+    feri_coulomb_LLLL = h5py.File(coulomb_LLLL % "F", 'r')
+    feri_coulomb_LLSS = h5py.File(coulomb_LLSS % "F", 'r')
+    feri_coulomb_SSLL = h5py.File(coulomb_SSLL % "F", 'r')
+    feri_coulomb_SSSS = h5py.File(coulomb_SSSS % "F", 'r')
+
+    eri_coulomb = numpy.array(feri_coulomb_LLLL['eri_mo']).reshape(n, n, n, n)
+    eri_coulomb += numpy.array(feri_coulomb_LLSS['eri_mo']
+                               ).reshape(n, n, n, n) * c1**2
+    eri_coulomb += numpy.array(feri_coulomb_SSLL['eri_mo']
+                               ).reshape(n, n, n, n) * c1**2
+    eri_coulomb += numpy.array(feri_coulomb_SSSS['eri_mo']
+                               ).reshape(n, n, n, n) * c1**4
+
+    feri_breit_LSLS = h5py.File(breit_LSLS % "F", 'r')
+    feri_breit_SLSL = h5py.File(breit_SLSL % "F", 'r')
+    feri_breit_LSSL = h5py.File(breit_LSSL % "F", 'r')
+    feri_breit_SLLS = h5py.File(breit_SLLS % "F", 'r')
+
+    eri_breit = numpy.array(feri_breit_LSLS['eri_mo']).reshape(n, n, n, n)
+    eri_breit += numpy.array(feri_breit_SLSL['eri_mo']).reshape(n, n, n, n)
+    eri_breit += numpy.array(feri_breit_LSSL['eri_mo']).reshape(n, n, n, n)
+    eri_breit += numpy.array(feri_breit_SLLS['eri_mo']).reshape(n, n, n, n)
+    eri_breit *= c1**2
+
+    print("eri_coulomb diff = ", numpy.linalg.norm(eri_coulomb - int2e1))
+    print("eri_breit diff = ", numpy.linalg.norm(eri_breit - breit_1))
+
+    int2e2, breit_2 = FCIDUMP_Rela4C(
+        mol, mf, with_breit=True, filename="FCIDUMP_4C_outcore_1", mode="outcore", debug=True)
+    int2e2, breit_2 = FCIDUMP_Rela4C(
+        mol, mf, with_breit=True, filename="FCIDUMP_4C_outcore_2", mode="outcore", debug=False)
+
+    feri_coulomb_LLLL.close()
+    feri_coulomb_LLSS.close()
+    feri_coulomb_SSLL.close()
+    feri_coulomb_SSSS.close()
+
+    feri_breit_LSLS.close()
+    feri_breit_SLSL.close()
+    feri_breit_LSSL.close()
+    feri_breit_SLLS.close()
