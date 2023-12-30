@@ -418,29 +418,29 @@ Vert_Ext = {
         # },
     },
     "H2S": {
-        "gt": {
-            "task": "0 0 1 1",
-            "cas": [4, 4],
-        },
-        "S1s": {
-            "loc": [0, 1],
-            "cas": [4, 4],
-            # "task": "0 0 1 1 0 3 1 1 2 0 1 1 2 3 1 1", # seems to be problematic
-            "task": "0 0 3 1 1 1 0 2 1 1 0 3 2 1 1",
-            "type": "S1s",
-        },
-        # "S2s": {
-        #     "loc": [1, 2],
+        # "gt": {
+        #     "task": "0 0 1 1",
         #     "cas": [4, 4],
-        #     "task": "0 0 1 1 0 3 1 1 2 0 1 1 2 3 1 1",
-        #     "type": "S2s",
         # },
-        # "S2p": {
-        #     "loc": [2, 5],
+        # "S1s": {
+        #     "loc": [0, 1],
         #     "cas": [4, 4],
-        #     "task": "0 0 2 1 1 0 1 1 1 0 2 1 1 0 3 2 1 1 2 0 2 1 1 2 1 1 1 2 2 1 1 2 3 2 1 1",
-        #     "type": "S2p",
+        #     # "task": "0 0 1 1 0 3 1 1 2 0 1 1 2 3 1 1", # seems to be problematic
+        #     "task": "0 0 3 1 1 1 0 2 1 1 0 3 2 1 1",
+        #     "type": "S1s",
         # },
+        "S2s": {
+            "loc": [1, 2],
+            "cas": [4, 4],
+            "task": "0 0 1 1 0 3 1 1 2 0 1 1 2 3 1 1",
+            "type": "S2s",
+        },
+        "S2p": {
+            "loc": [2, 5],
+            "cas": [4, 4],
+            "task": "0 0 2 1 1 0 1 1 1 0 2 1 1 0 3 2 1 1 2 0 2 1 1 2 1 1 1 2 2 1 1 2 3 2 1 1",
+            "type": "S2p",
+        },
     },
     "HCl": {
         "gt": {
@@ -752,6 +752,9 @@ if __name__ == "__main__":
 
     for mole, info in Vert_Ext.items():
 
+        if mole != "H2S":
+            continue
+
         for basis in BASIS:
             mol = pyscf.gto.M(
                 verbose=4,
@@ -775,6 +778,8 @@ if __name__ == "__main__":
 
             scf = pyscf.scf.RHF(mol).x2c()
             scf.kernel()
+
+            print(scf.mo_energy)
 
             for task, subinfo in info.items():
                 if task == "gt":
@@ -812,7 +817,7 @@ if __name__ == "__main__":
     ### test the Ion_Ene ###
 
     for mole, info in Ion_Ene.items():
-
+        continue
         for basis in BASIS:
             mol = pyscf.gto.M(
                 verbose=4,
