@@ -462,7 +462,52 @@ def _atm_spinor_2_d2h_adapted_spinor(mol):
                     Res[loc+9-loc_tmp, loc_col] = trans_map[1, 0]
                     Res[loc+9-loc_tmp, loc_col+1] = trans_map[1, 1]
                     indxA.append(loc_col)
+                    loc_col += 2
                 loc += 10
+        elif l == 5:
+            for _ in range(nctr):
+                # J 9/2
+                for loc_tmp, info in enumerate(LOC_MAP[9]):
+                    trans_map = TRANS_MAP[info]
+                    Res[loc+loc_tmp, loc_col] = trans_map[0, 0]
+                    Res[loc+loc_tmp, loc_col+1] = trans_map[0, 1]
+                    Res[loc+9-loc_tmp, loc_col] = trans_map[1, 0]
+                    Res[loc+9-loc_tmp, loc_col+1] = trans_map[1, 1]
+                    indxA.append(loc_col)
+                    loc_col += 2
+                loc += 10
+                # J 11/2
+                for loc_tmp, info in enumerate(LOC_MAP[11]):
+                    trans_map = TRANS_MAP[info]
+                    Res[loc+loc_tmp, loc_col] = trans_map[0, 0]
+                    Res[loc+loc_tmp, loc_col+1] = trans_map[0, 1]
+                    Res[loc+11-loc_tmp, loc_col] = trans_map[1, 0]
+                    Res[loc+11-loc_tmp, loc_col+1] = trans_map[1, 1]
+                    indxA.append(loc_col)
+                    loc_col += 2
+                loc += 12
+        elif l == 6:
+            for _ in range(nctr):
+                # J 11/2
+                for loc_tmp, info in enumerate(LOC_MAP[11]):
+                    trans_map = TRANS_MAP[info]
+                    Res[loc+loc_tmp, loc_col] = trans_map[0, 0]
+                    Res[loc+loc_tmp, loc_col+1] = trans_map[0, 1]
+                    Res[loc+11-loc_tmp, loc_col] = trans_map[1, 0]
+                    Res[loc+11-loc_tmp, loc_col+1] = trans_map[1, 1]
+                    indxA.append(loc_col)
+                    loc_col += 2
+                loc += 12
+                # J 13/2
+                for loc_tmp, info in enumerate(LOC_MAP[13]):
+                    trans_map = TRANS_MAP[info]
+                    Res[loc+loc_tmp, loc_col] = trans_map[0, 0]
+                    Res[loc+loc_tmp, loc_col+1] = trans_map[0, 1]
+                    Res[loc+13-loc_tmp, loc_col] = trans_map[1, 0]
+                    Res[loc+13-loc_tmp, loc_col+1] = trans_map[1, 1]
+                    indxA.append(loc_col)
+                    loc_col += 2
+                loc += 14
         else:
             raise ValueError("l = %3d is not supported" % l)
 

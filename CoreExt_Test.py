@@ -238,7 +238,7 @@ Cl 0.          0.          1.91175365
 }
 
 BASIS = [
-    "aug-cc-pVDZ",
+    "unc-aug-cc-pVDZ",
     # "aug-cc-pVTZ",
     # "aug-cc-pVDZ-DK",
     # "aug-cc-pVTZ-DK",
@@ -752,8 +752,8 @@ if __name__ == "__main__":
 
     for mole, info in Vert_Ext.items():
 
-        if mole != "H2S":
-            continue
+        # if mole != "H2S":
+        #     continue
 
         for basis in BASIS:
             mol = pyscf.gto.M(
@@ -817,7 +817,7 @@ if __name__ == "__main__":
     ### test the Ion_Ene ###
 
     for mole, info in Ion_Ene.items():
-        continue
+        # continue
         for basis in BASIS:
             mol = pyscf.gto.M(
                 verbose=4,
