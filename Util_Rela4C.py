@@ -823,7 +823,7 @@ def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
 
 if __name__ == "__main__":
     # mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
-    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5,
+    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz-dk', verbose=5,
                 charge=-1, spin=0, symmetry="d2h")
     mol.build()
     mf = scf.dhf.RDHF(mol)
