@@ -205,7 +205,20 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                     eri_coulomb += numpy.array(
                         feri_coulomb_SSSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**4
 
+                    # max_coulomb = numpy.max(numpy.abs(eri_coulomb))
+
+                    # if max_coulomb > tol:
+
+                    for k in range(n2c):
+                        # max_coulomb = numpy.max(numpy.abs(eri_coulomb[k]))
+                        # if max_coulomb > tol:
+                        for l in range(n2c):
+                            if abs(eri_coulomb[k][l]) > tol:
+                                fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
+                                    eri_coulomb[k][l].real, eri_coulomb[k][l].imag, i+1, j+1, k+1, l+1))
+
                     if with_breit:
+
                         eri_breit = numpy.array(
                             feri_breit_LSLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
                         eri_breit += numpy.array(
@@ -215,16 +228,19 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                         eri_breit += numpy.array(
                             feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
 
-                    for k in range(n2c):
-                        for l in range(n2c):
-                            if abs(eri_coulomb[k][l]) > tol:
-                                fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
-                                    eri_coulomb[k][l].real, eri_coulomb[k][l].imag, i+1, j+1, k+1, l+1))
-                            if with_breit:
+                        # max_breit = numpy.max(numpy.abs(eri_breit))
+
+                        # if max_breit > tol:
+                        for k in range(n2c):
+                            # max_breit = numpy.max(numpy.abs(eri_breit[k]))
+                            # if max_breit > tol:
+                            for l in range(n2c):
                                 if abs(eri_breit[k][l]) > tol:
                                     fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
                                         eri_breit[k][l].real, eri_breit[k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
+
         else:
+
             for i in range(n2c):
                 for j in range(n2c):
 
@@ -239,6 +255,17 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                     eri_coulomb += numpy.array(
                         feri_coulomb_SSSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**4
 
+                    # max_coulomb = numpy.max(numpy.abs(eri_coulomb))
+
+                    # if max_coulomb > tol:
+                    for k in range(n2c):
+                        # max_coulomb = numpy.max(numpy.abs(eri_coulomb[k]))
+                        # if max_coulomb > tol:
+                        for l in range(n2c):
+                            if abs(eri_coulomb[k][l]) > tol:
+                                fout.write("%18.12E %4d %4d %4d %4d\n" % (
+                                    eri_coulomb[k][l].real, i+1, j+1, k+1, l+1))
+
                     if with_breit:
                         eri_breit = numpy.array(
                             feri_breit_LSLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
@@ -249,12 +276,13 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                         eri_breit += numpy.array(
                             feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
 
-                    for k in range(n2c):
-                        for l in range(n2c):
-                            if abs(eri_coulomb[k][l]) > tol:
-                                fout.write("%18.12E %4d %4d %4d %4d\n" % (
-                                    eri_coulomb[k][l].real, i+1, j+1, k+1, l+1))
-                            if with_breit:
+                        # max_breit = numpy.max(numpy.abs(eri_breit))
+
+                        # if max_breit > tol:
+                        for k in range(n2c):
+                            # max_breit = numpy.max(numpy.abs(eri_breit[k]))
+                            # if max_breit > tol:
+                            for l in range(n2c):
                                 if abs(eri_breit[k][l]) > tol:
                                     fout.write("%18.12E %4d %4d %4d %4d\n" % (
                                         eri_breit[k][l].real, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
@@ -276,7 +304,19 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                     eri_coulomb += numpy.array(
                         feri_coulomb_SSSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**4
 
+                    # max_coulomb = numpy.max(numpy.abs(eri_coulomb))
+
+                    # if max_coulomb > tol:
+                    for k in range(i+1):
+                        # max_coulomb = numpy.max(numpy.abs(eri_coulomb[k]))
+                        # if max_coulomb > tol:
+                        for l in range(n2c):
+                            if abs(eri_coulomb[k][l]) > tol:
+                                fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
+                                    eri_coulomb[k][l].real, eri_coulomb[k][l].imag, i+1, j+1, k+1, l+1))
+
                     if with_breit:
+
                         eri_breit = numpy.array(
                             feri_breit_LSLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
                         eri_breit += numpy.array(
@@ -286,15 +326,17 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                         eri_breit += numpy.array(
                             feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
 
-                    for k in range(i+1):
-                        for l in range(n2c):
-                            if abs(eri_coulomb[k][l]) > tol:
-                                fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
-                                    eri_coulomb[k][l].real, eri_coulomb[k][l].imag, i+1, j+1, k+1, l+1))
-                            if with_breit:
+                        # max_breit = numpy.max(numpy.abs(eri_breit))
+
+                        # if max_breit > tol:
+                        for k in range(i+1):
+                            # max_breit = numpy.max(numpy.abs(eri_breit[k]))
+                            # if max_breit > tol:
+                            for l in range(n2c):
                                 if abs(eri_breit[k][l]) > tol:
                                     fout.write("%18.12E %18.12E %4d %4d %4d %4d\n" % (
                                         eri_breit[k][l].real, eri_breit[k][l].imag, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
+
         else:
             for i in range(n2c):
                 for j in range(i+1):
@@ -310,6 +352,17 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                     eri_coulomb += numpy.array(
                         feri_coulomb_SSSS['eri_mo'][ij]).reshape(n2c, n2c) * c1**4
 
+                    # max_coulomb = numpy.max(numpy.abs(eri_coulomb))
+
+                    # if max_coulomb > tol:
+                    for k in range(i+1):
+                        # max_coulomb = numpy.max(numpy.abs(eri_coulomb[k]))
+                        # if max_coulomb > tol:
+                        for l in range(n2c):
+                            if abs(eri_coulomb[k][l]) > tol:
+                                fout.write("%18.12E %4d %4d %4d %4d\n" % (
+                                    eri_coulomb[k][l].real, i+1, j+1, k+1, l+1))
+
                     if with_breit:
                         eri_breit = numpy.array(
                             feri_breit_LSLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
@@ -320,12 +373,13 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                         eri_breit += numpy.array(
                             feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
 
-                    for k in range(i+1):
-                        for l in range(n2c):
-                            if abs(eri_coulomb[k][l]) > tol:
-                                fout.write("%18.12E %4d %4d %4d %4d\n" % (
-                                    eri_coulomb[k][l].real, i+1, j+1, k+1, l+1))
-                            if with_breit:
+                        # max_breit = numpy.max(numpy.abs(eri_breit))
+
+                        # if max_breit > tol:
+                        for k in range(i+1):
+                            # max_breit = numpy.max(numpy.abs(eri_breit[k]))
+                            # if max_breit > tol:
+                            for l in range(n2c):
                                 if abs(eri_breit[k][l]) > tol:
                                     fout.write("%18.12E %4d %4d %4d %4d\n" % (
                                         eri_breit[k][l].real, n2c+i+1, n2c+j+1, n2c+k+1, n2c+l+1))
@@ -343,6 +397,7 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
         feri_breit_SLSL.close()
         feri_breit_LSSL.close()
         feri_breit_SLLS.close()
+
 
 def _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="s1", tol=1e-8):
     """ Dump the 2-electron integrals in FCIDUMP format (**incore** mode)
@@ -625,7 +680,7 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
             output_format = float_format + ' 0  0  0  0\n'
             fout.write(output_format % nuc)
 
-    ########### clean 
+    # clean
 
     if mode == "outcore":
 
@@ -823,7 +878,7 @@ def _time_reversal_symmetry_adapted(mol, mo_coeff,  debug=False):
 
 if __name__ == "__main__":
     # mol = gto.M(atom='H 0 0 0; H 0 0 1; O 0 1 0', basis='sto-3g', verbose=5)
-    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz', verbose=5,
+    mol = gto.M(atom='F 0 0 0', basis='cc-pvdz-dk', verbose=5,
                 charge=-1, spin=0, symmetry="d2h")
     mol.build()
     mf = scf.dhf.RDHF(mol)
