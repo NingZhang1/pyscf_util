@@ -632,6 +632,8 @@ def FCIDUMP_Rela4C_SU2(mol, my_RDHF, with_breit=False, filename="fcidump", mode=
     mo_parity = [x for id, x in enumerate(mo_parity) if id % 2 == 0]
     print("mo_parity = ", mo_parity)
 
+    my_RDHF.mo_coeff = mo_coeff
+
     coulomb, breit = FCIDUMP_Rela4C(mol, my_RDHF, with_breit=with_breit, filename=filename,
                                     mode=mode, orbsym_ID=mo_parity, IsComplex=False, debug=debug)
 
@@ -651,6 +653,8 @@ if __name__ == "__main__":
     mf.conv_tol = 1e-12
     mf.with_breit = True
     mf.kernel()
+
+    mo_coeff_backup = mf.mo_coeff.copy()
 
     # the benchmark
 
@@ -786,6 +790,9 @@ if __name__ == "__main__":
     mf.mo_coeff[:, n2c:] = mo_pes
 
     ################## test the symmetry adapted basis ####################
+
+
+    mf.mo_coeff = mo_coeff_backup
 
     int_coulomb, int_breit, mo_parity, mo_coeff_adapted = FCIDUMP_Rela4C_SU2(
         mol, mf, with_breit=True, filename="fcidump_adapted", mode="incore", debug=True)
