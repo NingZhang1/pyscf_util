@@ -186,7 +186,7 @@ def atom_min_cas_bas(atom_label_list, basis='6-31G(d)', print_verbose=0):
 
 
 if __name__ == "__main__":
-    # print(_atom_min_cas("C")[1][:,2:5])
+    print(_atom_min_cas("C")[1][:,2:5])
     # print(_atom_min_cas("H")[1][:,2:5])
     # print(_atom_min_cas("O")[1][:,2:5])
     # print(_atom_min_cas("N")[1][:,2:5])

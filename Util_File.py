@@ -1,4 +1,3 @@
-from sys import ps1
 import numpy
 
 # dump file
@@ -88,12 +87,19 @@ def ReadIn_Cmoao(TaskName, nao, skiprows=1):
     return cmoao
 
 
-def ReadIn_SpinRDM1(filename, norb, nstates):
-    istate, i, j, val = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,i,d'),
-                                      delimiter=',', skiprows=1, unpack=True)
-    rdm1 = numpy.zeros((nstates, norb, norb))
-    rdm1[istate, i, j] = val
-    return rdm1
+def ReadIn_SpinRDM1(filename, norb, nstates, IsAveraged=False):
+    if IsAveraged:
+        i, j, val = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,d'),
+                                  delimiter=',', skiprows=1, unpack=True)
+        rdm1 = numpy.zeros((norb, norb))
+        rdm1[i, j] = val
+        return rdm1
+    else:
+        istate, i, j, val = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,i,d'),
+                                          delimiter=',', skiprows=1, unpack=True)
+        rdm1 = numpy.zeros((nstates, norb, norb))
+        rdm1[istate, i, j] = val
+        return rdm1
 
 
 if __name__ == "__main__":
