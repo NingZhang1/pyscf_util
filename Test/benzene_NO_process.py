@@ -4,28 +4,29 @@ import pyscf
 from pyscf import tools
 from Util_File import ReadIn_Cmoao, Dump_Cmoao, ReadIn_SpinRDM1
 from Util_Orb import Analysis_Orb_Comp, _construct_atm_bas
+from Util_Pic import draw_heatmap
 
 # construct ao
 
 atm_bas = {
     "H": {
         "1s": [0],
-        # "2s": [1],
-        # "2p": [2, 3, 4],
+        "2s": [1],
+        "2p": [2, 3, 4],
         "nao": 5,
         "basis": "ccpvdz",
         "cmoao": None,
     },
     "C": {
-        # "1s": [0],
+        "1s": [0],
         "2s": [1],
-        # "2p": [2, 3, 4],
-        "2px": [4],
-        "2py": [2],
+        "2p": [2, 3, 4],
+        # "2px": [4],
+        # "2py": [2],
         # "2pz": [3],
         "3p": [5, 6, 7],
         "3s": [8],
-        # "3d": [9, 10, 11, 12, 13],
+        "3d": [9, 10, 11, 12, 13],
         "nao": 14,
         "basis": "ccpvdz",
         "cmoao": None,
@@ -94,7 +95,8 @@ H     0.0000    -2.484212    0.0000
 
     from functools import reduce
 
-    print(numpy.allclose(reduce(numpy.dot, (no_ao_coeff.T, ovlp, no_ao_coeff)), numpy.eye(Mol.nao)))
+    print(numpy.allclose(
+        reduce(numpy.dot, (no_ao_coeff.T, ovlp, no_ao_coeff)), numpy.eye(Mol.nao)))
 
     Analysis_Orb_Comp(Mol, no_ao_coeff, Mol.nelectron//2-3, Mol.nelectron//2+3,
                       atm_bas, tol=0.1, with_distinct_atm=True)
@@ -110,17 +112,21 @@ H     0.0000    -2.484212    0.0000
 
     ### generate a random guess ###
 
-    nbas = Mol.nelectron//2 - 3 - 6 
+    nbas = Mol.nelectron//2 - 3 - 6
     random_uni = numpy.random.uniform(-1, 1, (nbas, nbas))
     uni, _ = numpy.linalg.qr(random_uni)
 
-    no_ao_coeff[:, 6:Mol.nelectron//2-3] = numpy.dot(no_ao_coeff[:, 6:Mol.nelectron//2-3], uni)
+    no_ao_coeff[:, 6:Mol.nelectron//2 -
+                3] = numpy.dot(no_ao_coeff[:, 6:Mol.nelectron//2-3], uni)
 
     # no_ao_coeff = split_loc_given_range_NoSymm(Mol, no_ao_coeff, 0, 6) # C 1s
-    no_ao_coeff = split_loc_given_range_NoSymm(Mol, no_ao_coeff, 0, Mol.nelectron//2-3) ### 局域化的有问题 ! 
-    no_ao_coeff = split_loc_given_range_NoSymm(Mol, no_ao_coeff, Mol.nelectron//2+3, Mol.nao) 
+    no_ao_coeff = split_loc_given_range_NoSymm(
+        Mol, no_ao_coeff, 0, Mol.nelectron//2-3)  # 局域化的有问题 !
+    no_ao_coeff = split_loc_given_range_NoSymm(
+        Mol, no_ao_coeff, Mol.nelectron//2+3, Mol.nao)
 
-    print(numpy.allclose(reduce(numpy.dot, (no_ao_coeff.T, ovlp, no_ao_coeff)), numpy.eye(Mol.nao)))
+    print(numpy.allclose(
+        reduce(numpy.dot, (no_ao_coeff.T, ovlp, no_ao_coeff)), numpy.eye(Mol.nao)))
 
     mo_occ = numpy.zeros(Mol.nao, dtype=numpy.int)
     for i in range(Mol.nelectron//2):
@@ -130,12 +136,11 @@ H     0.0000    -2.484212    0.0000
 
     SCF.mo_coeff = no_ao_coeff
 
-    fock = SCF.get_fock(dm=dm1) # in AO basis
+    fock = SCF.get_fock(dm=dm1)  # in AO basis
 
     fock_mo = reduce(numpy.dot, (no_ao_coeff.T, fock, no_ao_coeff))
 
     print(numpy.diag(fock_mo))
-
 
     ### reordering by fock ###
 
@@ -146,17 +151,67 @@ H     0.0000    -2.484212    0.0000
 
     no_ao_coeff = numpy.dot(no_ao_coeff, c)
 
-    # build fock again 
+    # build fock again
 
     dm1 = pyscf.scf.hf.make_rdm1(no_ao_coeff, mo_occ)
-    fock = SCF.get_fock(dm=dm1) # in AO basis
-    fock_mo = reduce(numpy.dot, (no_ao_coeff.T, fock, no_ao_coeff))
+    fock = SCF.get_fock(dm=dm1)  # in AO basis
+    
+
     print(numpy.diag(fock_mo))
+    # draw_heatmap(numpy.log(numpy.abs(fock_mo)), list(range(Mol.nao)), list(range(Mol.nao)), x_label="MO", y_label="MO", vmax=1.3, vmin=-10)
+    fock_mo = reduce(numpy.dot, (no_ao_coeff.T, fock, no_ao_coeff))
 
     pyscf.tools.molden.from_mo(Mol, "benzene3.molden", no_ao_coeff)
 
     Analysis_Orb_Comp(Mol, no_ao_coeff, 0, Mol.nelectron//2-3,
                       atm_bas, tol=0.1, with_distinct_atm=True)
+
+    Res = Analysis_Orb_Comp(Mol, no_ao_coeff, Mol.nelectron//2+3, Mol.nao,
+                            atm_bas, tol=0.1, with_distinct_atm=True)
+
+    print(Res)
+
+    List = {
+        "H_1": [],
+        "H_2": [],
+        "H_3": [],
+        "H_4": [],
+        "H_5": [],
+        "H_6": [],
+        "C_1": [],
+        "C_2": [],
+        "C_3": [],
+        "C_4": [],
+        "C_5": [],
+        "C_6": [],
+        "anti_bonding"  : [],
+    }
+
+    for data in Res:
+        if isinstance(data['key'], list):
+            List["anti_bonding"].append(data['orbindx'])
+        else:
+            List[data['key'][:3]].append(data['orbindx'])
     
-    Analysis_Orb_Comp(Mol, no_ao_coeff, Mol.nelectron//2+3, Mol.nao,
-                      atm_bas, tol=0.1, with_distinct_atm=True)
+    Reordering = []
+    Reordering.extend(List["anti_bonding"])
+    Reordering.extend(List["H_1"])
+    Reordering.extend(List["H_2"])
+    Reordering.extend(List["H_3"])
+    Reordering.extend(List["H_4"])
+    Reordering.extend(List["H_5"])
+    Reordering.extend(List["H_6"])
+    Reordering.extend(List["C_1"])
+    Reordering.extend(List["C_2"])
+    Reordering.extend(List["C_3"])
+    Reordering.extend(List["C_4"])
+    Reordering.extend(List["C_5"])
+    Reordering.extend(List["C_6"])
+
+    print(Reordering)
+
+    no_ao_coeff[:, Mol.nelectron//2+3:] = no_ao_coeff[:, Reordering]
+    fock_mo = reduce(numpy.dot, (no_ao_coeff.T, fock, no_ao_coeff))
+    print(numpy.diag(fock_mo))
+    draw_heatmap(numpy.log(numpy.abs(fock_mo)), list(range(Mol.nao)), list(range(Mol.nao)), x_label="MO", y_label="MO", vmax=1.3, vmin=-10)
+    # fock_mo = reduce(numpy.dot, (no_ao_coeff.T, fock, no_ao_coeff))

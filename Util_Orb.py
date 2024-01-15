@@ -911,9 +911,15 @@ def Analysis_Orb_Comp(mol, cmoao, indx_begin, indx_end, atm_bas_info, tol = 0.1,
             if norm > tol:
                 if _print:
                     print("orbindx %3d Comp %s Contr %15.8f" % (i, key, norm*norm))
-                if norm > norm_res:
+                if norm > norm_res * 1.01:
                     norm_res = norm
                     Res_tmp["key"] = key
+                else:
+                    if norm > norm_res * 0.99:
+                        if isinstance(Res_tmp["key"], list):
+                            Res_tmp["key"].append(key)
+                        else:
+                            Res_tmp["key"] = [Res_tmp["key"], key]
         
         if extract_given_atm is not None:
             if comp_wanted > tol_extract:

@@ -174,13 +174,45 @@ TaskInfo = [
         "fake_spin": 0,
         "fake_irrep_nelec": {'s+0': 4, 'p+0': 2, 'p-1': 2, 'p+1': 2, },
     },
+
+    {
+        "atom": "Cr",
+        "charge": 0,
+        "spin": 6,
+
+        "state": [[6, 's+0', 1],],
+
+        "iCI_state": [[6, 0, 1, [1]]],
+
+        "basis":'ccpvdz-dk',
+
+        "minimal_cas": {
+            "norb": 6,
+            "nelec": 6,
+        },
+
+        "cas_symm":  {
+            's+0': 1, 'd+0': 1, 'd+1': 1, 'd-1': 1, 'd+2': 1, 'd-2': 1,
+        },
+
+        "core_symm":  {
+            's+0': 3,
+            'p+0': 2, 'p-1': 2, 'p+1': 2,
+        },
+
+        "fakescf": False,
+        # "fake_charge": 0,
+        # "fake_spin": 0,
+        # "fake_irrep_nelec": {'s+0': 4, 'p+0': 2, 'p-1': 2, 'p+1': 2, },
+    },
 ]
 
 if __name__ == '__main__':
 
     for task in TaskInfo:
 
-        if task["atom"] not in ["C", "H"]:
+        # if task["atom"] not in ["C", "H"]:
+        if task["atom"] not in ["Cr"]:
             continue
 
         Mol_Dooh = pyscf.gto.Mole()
