@@ -41,7 +41,7 @@ class iCI_RawData:
         return self.spintwo == o.spintwo and self.symmetry == o.symmetry and self.cmin == o.cmin and self.istate == o.istate
 
     def __lt__(self, o: object) -> bool:
-        ## first spintwo then symmetry then istate then cmin
+        # first spintwo then symmetry then istate then cmin
 
         if self.spintwo == o.spintwo:
             if self.symmetry == o.symmetry:
@@ -106,6 +106,8 @@ def Extract_NonRela_Pt_Info_New(filename: str):
     CMIN = _fetch_cmin(filename)
     ITASK = 0
 
+    # print("CMIN: ", CMIN)
+
     for i in range(len(lines)):
         if "iCI_ENPT(2)_NonRela::Info" in lines[i]:
             begin = i
@@ -126,6 +128,8 @@ def Extract_NonRela_Pt_Info_New(filename: str):
             ept = None
             etot = None
 
+            # print("ITASK: ", ITASK)
+            # print("CMIN: ", CMIN[ITASK])
             cmin = CMIN[ITASK]
             ITASK += 1
 
@@ -136,6 +140,7 @@ def Extract_NonRela_Pt_Info_New(filename: str):
                             break
 
                         str_tmp = lines[k].split("|")
+                        # print(str_tmp)
                         try:
                             spintwo = int(str_tmp[SPINTWO_LOC])
                             istate = 0
@@ -166,6 +171,97 @@ def Extract_NonRela_Pt_Info_New(filename: str):
                     break
 
             # print("DataTmp: ", len(DataTmp))
+            # print("DataTmp: ", DataTmp[0])
+            Res.append(DataTmp)
+
+    return Res
+
+
+def Extract_NonRela_Pt_Info_Origin(filename: str):
+
+    # SPINTWO_LOC = 0
+    # SYMMETRY_LOC = 1
+    NCFG_LOC = 2-2
+    NCSF_LOC = 3-2
+    E_VAR_LOC = 4-2
+    E_PT_LOC = 5-2
+    E_TOT_LOC = 6-2
+
+    lines = None
+    try:
+        file = open(filename)
+        lines = file.readlines()
+        file.close()
+    except:
+        return None, False, False, 0
+
+    Res = []
+
+    CMIN = _fetch_cmin(filename)
+    ITASK = 0
+
+    for i in range(len(lines)):
+        if "iCI_ENPT(2)_NonRela::Info" in lines[i]:
+            begin = i
+            end = i+1
+            for j in range(begin+1, len(lines)):
+                if "********************************" in lines[j]:
+                    end = j
+                    break
+
+            DataTmp = []
+
+            spintwo = None
+            symmetry = None
+            ncfg = None
+            ncsf = None
+            istate = None
+            evar = None
+            ept = None
+            etot = None
+
+            cmin = CMIN[ITASK]
+            ITASK += 1
+
+            for j in range(begin, end):
+                if '_______________________________________________________________________________________________' in lines[j]:
+                    for k in range(j+3, end):
+                        if '_______________________________________________________________________________________________' in lines[k]:
+                            break
+
+                        str_tmp = lines[k].split("|")
+                        # try:
+                        #     spintwo = int(str_tmp[SPINTWO_LOC])
+                        #     istate = 0
+                        # except:
+                        #     istate += 1
+                        #     assert spintwo is not None
+
+                        # try:
+                        #     symmetry = int(str_tmp[SYMMETRY_LOC])
+                        # except:
+                        #     assert symmetry is not None
+
+                        try:
+                            ncfg = int(str_tmp[NCFG_LOC])
+                            istate = 0
+                        except:
+                            istate += 1
+                            assert ncfg is not None
+
+                        try:
+                            ncsf = int(str_tmp[NCSF_LOC])
+                        except:
+                            assert ncsf is not None
+
+                        evar = float(str_tmp[E_VAR_LOC])
+                        ept = float(str_tmp[E_PT_LOC])
+                        etot = float(str_tmp[E_TOT_LOC])
+                        DataTmp.append(iCI_RawData(
+                            0, 0, cmin, ncfg, ncsf, istate, evar, ept, etot))
+                    break
+
+            # print("DataTmp: ", len(DataTmp))
             Res.append(DataTmp)
 
     return Res
@@ -189,23 +285,23 @@ if __name__ == "__main__":
             print(item)
         print("**********")
 
-    ## flat array
-        
+    # flat array
+
     pt_info_flat = []
     for array in pt_info:
         pt_info_flat.extend(array)
-    
-    ## sort array
-        
+
+    # sort array
+
     pt_info_flat.sort()
 
-    ## print array
+    # print array
 
     for item in pt_info_flat:
         print(item)
-    
-    ## 文件名匹配，提取信息，根据文件名提取信息
-        
+
+    # 文件名匹配，提取信息，根据文件名提取信息
+
     FILENAME = "input_SO2_S2p_aug-cc-pVTZ_Vert.out"
     FILENAME = FILENAME.split(".")[0]
     print(FILENAME)
