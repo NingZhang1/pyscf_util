@@ -33,15 +33,34 @@ atm_bas = {
     },
 }
 
+atm_loc_bas = {
+    "H": {
+        "all": [0, 1, 2, 3, 4],
+        "nao": 5,
+        "basis": "ccpvdz",
+        "cmoao": None,
+    },
+    "C": {
+        "all": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+        "nao": 14,
+        "basis": "ccpvdz",
+        "cmoao": None,
+    },
+}
+
 dirname = "/home/nzhangcaltech/GitHub_Repo/pyscf_util/Test/AtmOrb"
 
 for atom in ["H", "C"]:
     atm_bas[atom]["cmoao"] = ReadIn_Cmoao(
         dirname+"/"+"%s_0_%s" % (atom, atm_bas[atom]["basis"]), atm_bas[atom]["nao"])
+    atm_loc_bas[atom]["cmoao"] = ReadIn_Cmoao(
+        dirname+"/"+"%s_0_%s" % (atom, atm_loc_bas[atom]["basis"]), atm_loc_bas[atom]["nao"])
 
 print(atm_bas["H"]["cmoao"])
 print(atm_bas["C"]["cmoao"])
 # print(atm_bas["C"]["2pz"])
+
+
 
 if __name__ == '__main__':
     Mol = pyscf.gto.Mole()
@@ -155,7 +174,6 @@ H     0.0000    -2.484212    0.0000
 
     dm1 = pyscf.scf.hf.make_rdm1(no_ao_coeff, mo_occ)
     fock = SCF.get_fock(dm=dm1)  # in AO basis
-    
 
     print(numpy.diag(fock_mo))
     # draw_heatmap(numpy.log(numpy.abs(fock_mo)), list(range(Mol.nao)), list(range(Mol.nao)), x_label="MO", y_label="MO", vmax=1.3, vmin=-10)
@@ -184,7 +202,7 @@ H     0.0000    -2.484212    0.0000
         "C_4": [],
         "C_5": [],
         "C_6": [],
-        "anti_bonding"  : [],
+        "anti_bonding": [],
     }
 
     for data in Res:
@@ -192,7 +210,7 @@ H     0.0000    -2.484212    0.0000
             List["anti_bonding"].append(data['orbindx'])
         else:
             List[data['key'][:3]].append(data['orbindx'])
-    
+
     Reordering = []
     Reordering.extend(List["anti_bonding"])
     Reordering.extend(List["H_1"])
@@ -213,5 +231,34 @@ H     0.0000    -2.484212    0.0000
     no_ao_coeff[:, Mol.nelectron//2+3:] = no_ao_coeff[:, Reordering]
     fock_mo = reduce(numpy.dot, (no_ao_coeff.T, fock, no_ao_coeff))
     print(numpy.diag(fock_mo))
-    draw_heatmap(numpy.log(numpy.abs(fock_mo)), list(range(Mol.nao)), list(range(Mol.nao)), x_label="MO", y_label="MO", vmax=1.3, vmin=-10)
+    # draw_heatmap(numpy.log(numpy.abs(fock_mo)), list(range(Mol.nao)), list(range(Mol.nao)), x_label="MO", y_label="MO", vmax=1.3, vmin=-10)
     # fock_mo = reduce(numpy.dot, (no_ao_coeff.T, fock, no_ao_coeff))
+
+    Res = Analysis_Orb_Comp(Mol, no_ao_coeff, 0, Mol.nao,
+                            atm_loc_bas, tol=0.1, with_distinct_atm=True)
+
+    # print(Res)
+
+    orb_segment = {
+        "C1s": [0, 1 ,2 ,3 ,4, 5],
+        "CC_bond": [6, 7, 8, 9, 10, 11],
+        "CH_bond": [12, 13, 14, 15, 16, 17],
+        "Pi_bond": [18, 19, 20, 21, 22, 23],
+        "CC_anti_bond": [24, 25, 26, 27, 28, 29],
+        "H1_loc": [30, 31, 32, 33],
+        "H2_loc": [34, 35, 36, 37],
+        "H3_loc": [38, 39, 40, 41],
+        "H4_loc": [42, 43, 44, 45],
+        "H5_loc": [46, 47, 48, 49],
+        "H6_loc": [50, 51, 52, 53],
+        "C1_loc": [54, 55, 56, 57, 58, 59, 60, 61, 62, 63],
+        "C2_loc": [64, 65, 66, 67, 68, 69, 70, 71, 72, 73],
+        "C3_loc": [74, 75, 76, 77, 78, 79, 80, 81, 82, 83],
+        "C4_loc": [84, 85, 86, 87, 88, 89, 90, 91, 92, 93],
+        "C5_loc": [94, 95, 96, 97, 98, 99, 100, 101, 102, 103],
+        "C6_loc": [104, 105, 106, 107, 108, 109, 110, 111, 112, 113],
+    }
+
+    for key in orb_segment:
+        mo_coeff_tmp = no_ao_coeff[:, orb_segment[key]]
+        Dump_Cmoao("benzene_%s" % key, mo_coeff_tmp)

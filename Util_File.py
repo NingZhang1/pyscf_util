@@ -78,11 +78,13 @@ def ReadIn_Relint_csv(TaskName, nao, skiprows=1):
     return relint
 
 
-def ReadIn_Cmoao(TaskName, nao, skiprows=1):
+def ReadIn_Cmoao(TaskName, nao, nmo=None, skiprows=1):
     filename = TaskName + ".csv"
     i, j, val = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,d'),
                               delimiter=',', skiprows=skiprows, unpack=True)
-    cmoao = numpy.zeros((nao, nao))
+    if nmo is None:
+        nmo = nao
+    cmoao = numpy.zeros((nao, nmo))
     cmoao[i, j] = val
     return cmoao
 

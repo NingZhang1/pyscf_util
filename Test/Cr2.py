@@ -160,10 +160,19 @@ Cr     0.0000      0.0000  -%f
         iCISCF_Driver.canonicalization = True
         iCISCF_Driver.kernel(mo_coeff=mo_init)
 
+        core_cmoao = iCISCF_Driver.mo_coeff[:, :Mol.nelectron//2-6]
+        act_cmoao = iCISCF_Driver.mo_coeff[:, Mol.nelectron//2-6:Mol.nelectron//2+6]
+
+        import Integrals_Manager
+
+        Integrals_Manager.dump_heff_casci(Mol, iCISCF_Driver, core_cmoao, act_cmoao, "Cr2_%d_%s" % (bond_int, "CASSCF"))
+
+        # exit(1)
+
         Res = Analysis_Orb_Comp(Mol, iCISCF_Driver.mo_coeff, Mol.nelectron//2-6, Mol.nelectron//2+6,
                                 atm_bas, tol=0.1, with_distinct_atm=True)
 
-        continue
+        # continue
 
         # pyscf_util.dump_cmoao(DumpFileName, iCISCF_Driver.mo_coeff)
 
@@ -219,11 +228,17 @@ Cr     0.0000      0.0000  -%f
 
         print("e = ", numpy.diag(fock_lo))
 
-        e, h = numpy.linalg.eigh(fock_lo)
-
+        # the core part 
+        
+        ncore = Mol.nelectron//2-6
+        e, h = numpy.linalg.eigh(fock_lo[:ncore, :ncore])
         print("e = ", e)
+        lo_mocoeff[:, :ncore] = numpy.dot(lo_mocoeff[:, :ncore], h)  # should be a reordering
 
-        lo_mocoeff = numpy.dot(lo_mocoeff, h)  # should be a reordering
+        vir_begin = Mol.nelectron//2+6
+        e, h = numpy.linalg.eigh(fock_lo[vir_begin:, vir_begin:])
+        print("e = ", e)
+        lo_mocoeff[:, vir_begin:] = numpy.dot(lo_mocoeff[:, vir_begin:], h)
 
         lo_coeff = numpy.dot(mo_coeff, lo_mocoeff)
 
@@ -237,31 +252,6 @@ Cr     0.0000      0.0000  -%f
             "Cr_2": [],
             "bonding": [],
         }
-
-        Matrix = numpy.sqrt(0.5) * numpy.array([[1, 1], [1, -1]])
-
-        i = 0
-        while i < len(Res):
-            data = Res[i]
-            if isinstance(data['key'], list):
-                same = True
-                for j in range(len(data['key'])):
-                    if data['key'][j][:4] != data['key'][0][:4]:
-                        same = False
-                        break
-                if same:
-                    i += 1
-                else:
-                    rela = abs(e[i]-e[i+1])/abs(e[i])
-                    print("energy = ", e[i], e[i+1])
-                    if rela < 1e-5:
-                        print("reorder the orbitals", i, i)
-                        # lo_coeff[:, i:i+2] = numpy.dot(lo_coeff[:, i:i+2], Matrix)
-                        i += 2
-                    else:
-                        i += 1
-            else:
-                i += 1
 
         Res = Analysis_Orb_Comp(Mol, lo_coeff, 0, Mol.nelectron//2-6,
                                 atm_bas, tol=0.1, with_distinct_atm=True)
@@ -284,35 +274,6 @@ Cr     0.0000      0.0000  -%f
 
         List["bonding"].extend(
             list(range(Mol.nelectron//2-6, Mol.nelectron//2+6)))
-
-        Res = Analysis_Orb_Comp(Mol, lo_coeff, Mol.nelectron//2+6, Mol.nao,
-                                atm_bas, tol=0.1, with_distinct_atm=True)
-
-        i = 0
-        while i < len(Res):
-            data = Res[i]
-
-            if isinstance(data['key'], list):
-                same = True
-                for j in range(len(data['key'])):
-                    if data['key'][j][:4] != data['key'][0][:4]:
-                        same = False
-                        break
-                if same:
-                    i += 1
-                else:
-                    print("energy = ", e[i+Mol.nelectron//2+6], e[i+Mol.nelectron//2+6+1])
-                    rela = abs(e[i+Mol.nelectron//2+6]-e[i+Mol.nelectron//2+6+1])/abs(e[i+Mol.nelectron//2+6])
-                    if rela < 1e-5:
-                        print("reorder the orbitals", i, i+Mol.nelectron//2+6)
-                        begin_indx = i+Mol.nelectron//2+6
-                        # lo_coeff[:, begin_indx:begin_indx +
-                        #          2] = numpy.dot(lo_coeff[:, begin_indx:begin_indx+2], Matrix)
-                        i += 2
-                    else:
-                        i += 1
-            else:
-                i += 1
 
         Res = Analysis_Orb_Comp(Mol, lo_coeff, Mol.nelectron//2+6, Mol.nao,
                                 atm_bas, tol=0.1, with_distinct_atm=True)
@@ -346,13 +307,4 @@ Cr     0.0000      0.0000  -%f
             Mol, "Cr2_%d_LO.molden" % (bond_int), lo_coeff)
         Dump_Cmoao("Cr2_%d_LO_cmoao" % (bond_int), lo_coeff)
 
-
-        ## check the component of 30 and 31 
-
-        # check_ovlp = reduce(numpy.dot, (mo_coeff.T, ovlp, lo_coeff[:, 30:32]))
-        # for i in range(2):
-        #     print("basis", i)
-        #     for j in range(check_ovlp.shape[0]):
-        #         if abs(check_ovlp[j, i]) > 1e-5:
-        #             print(j, check_ovlp[j, i])
         
