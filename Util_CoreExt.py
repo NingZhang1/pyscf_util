@@ -99,7 +99,8 @@ def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, dump = True, debug=Fal
             orbsym = pyscf.symm.label_orb_symm(
                 mol, mol.irrep_id, mol.symm_orb, mo)
         else:
-            orbsym = [0] * len(orb_order//FACTOR)
+            # orbsym = [0] * len(orb_order)//FACTOR
+            orbsym = None
 
         ### dump the FCIDUMP ###
 

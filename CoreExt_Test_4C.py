@@ -57,9 +57,9 @@ H   0.          0.          2.41694745
 
 BASIS = [
     "aug-cc-pVDZ-DK",
-    # "aug-cc-pVTZ-DK",
-    # "unc-aug-cc-pVDZ-DK",
-    # "unc-aug-cc-pVTZ-DK",
+    "aug-cc-pVTZ-DK",
+    "unc-aug-cc-pVDZ-DK",
+    "unc-aug-cc-pVTZ-DK",
 ]
 
 basis_test = "cc-pVDZ"
@@ -246,3 +246,42 @@ if __name__ == "__main__":
                     )
             
             ######## Run 4C with Breit Only ########
+
+            mf.with_breit = True
+            mf.kernel()
+            print(mf.mo_energy[n2c:])
+
+            for task, subinfo in info.items():
+                if task == "gt":
+
+                    _dump_FCIDUMP(mol, mf, "FCIDUMP_%s_gt_%s_Vert_Breit" %
+                                  (mole, basis))
+
+                    # generate the input file
+
+                    _Generate_InputFile_SiCI(
+                        "input_%s_gt_%s_Vert" % (mole, basis),
+                        _get_gt_nsegment(mol, subinfo["cas"]),
+                        subinfo["cas"][0] * 2,
+                        Task=subinfo["task"],
+                        cmin=CMIN,
+                    )
+
+                else:
+
+                    res = Util_CoreExt._dump_CoreExt_FCIDUMP(
+                        mol, mf, [subinfo], "FCIDUMP_Vert_%s_%s_Breit_" % (mole, basis), Rela4C=True)
+                    nsegment = res[0]["nsegment"]
+
+                    ncore = subinfo["loc"][1] - subinfo["loc"][0]
+
+                    _Generate_InputFile_SiCI(
+                        "input_%s_%s_%s_Vert" % (
+                            mole, subinfo["type"], basis),
+                        nsegment,
+                        subinfo["cas"][0] * 2 + ncore * 2,
+                        Task=subinfo["task"],
+                        cmin=CMIN,
+                    )            
+
+

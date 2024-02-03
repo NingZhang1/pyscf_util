@@ -450,10 +450,14 @@ TaskInfo = [
 ]
 
 
-BASIS = ["ccpvdz",         "ccpvtz",         "ccpvqz",
-         "aug-ccpvdz",     "aug-ccpvtz",     "aug-ccpvqz",
-         "unc-ccpvdz",     "unc-ccpvtz",     "unc-ccpvqz",
-         "unc-aug-ccpvdz", "unc-aug-ccpvtz", "unc-aug-ccpvqz", ]
+BASIS = ["ccpvdz",         
+         "ccpvtz",         
+         "ccpvqz",
+         "ccpv5z",
+         # "aug-ccpvdz",     "aug-ccpvtz",     "aug-ccpvqz",
+         # "unc-ccpvdz",     "unc-ccpvtz",     "unc-ccpvqz",
+         # "unc-aug-ccpvdz", "unc-aug-ccpvtz", "unc-aug-ccpvqz", 
+         ]
 
 # BASIS = [
 #     "ccpvdz"
@@ -502,6 +506,9 @@ if __name__ == '__main__':
     Res = {}
 
     for task in TaskInfo:
+
+        if task["atom"] != "C":
+            continue
 
         Res[task["atom"]] = {}
 
