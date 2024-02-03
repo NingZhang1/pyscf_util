@@ -53,7 +53,8 @@ def is_iCI_Output(filename):
     '''
     file = open(filename)
     lines = file.readlines()
-    for i in range(min(10, len(lines))):
+    # for i in range(min(10, len(lines))):
+    for i in range(len(lines)):
         if "Iteractive Configuration Interaction with Selection" in lines[i]:
             return True
     file.close()

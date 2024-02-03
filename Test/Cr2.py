@@ -32,7 +32,7 @@ atm_bas = {
     },
 }
 
-dirname = "/home/nzhangcaltech/GitHub_Repo/pyscf_util/Test/AtmOrb"
+dirname = "/home/ningzhang/GitHub_Repo/pyscf_util/Test/AtmOrb"
 
 for atom in ["Cr"]:
     atm_bas[atom]["cmoao"] = ReadIn_Cmoao(
@@ -83,18 +83,30 @@ def get_sym(IrrepMap, Occ):
 # Cmin = [1e-4,9e-5,7e-5,5e-5,4e-5,3e-5,2e-5,1.5e-5,1e-5]
 
 
+# cas_space_symmetry = {
+#     'A1u': 2,        5
+#     'A1g': 2,        0
+#     'E1ux': 1,       7
+#     'E1gy': 1,       3
+#     'E1gx': 1,       2
+#     'E1uy': 1,       6
+#     'E2gy': 1,       1
+#     'E2gx': 1,       0
+#     'E2uy': 1,       4 
+#     'E2ux': 1        5
+# }
+
 cas_space_symmetry = {
-    'A1u': 2,
-    'A1g': 2,
-    'E1ux': 1,
-    'E1gy': 1,
-    'E1gx': 1,
-    'E1uy': 1,
-    'E2gy': 1,
-    'E2gx': 1,
-    'E2uy': 1,
-    'E2ux': 1
+    'Ag': 3,
+    'B1g':1,
+    'B2g':1,
+    'B3g':1,
+    'Au': 1,
+    'B1u':3,
+    'B2u':1,
+    'B3u':1,
 }
+
 
 if __name__ == '__main__':
 
@@ -110,7 +122,7 @@ Cr     0.0000      0.0000  %f
 Cr     0.0000      0.0000  -%f 
 ''' % (BondLength / 2, BondLength/2)
         Mol.basis = 'ccpvdz-dk'
-        Mol.symmetry = True
+        Mol.symmetry = "D2h"
         Mol.spin = 2
         Mol.charge = 0
         Mol.verbose = 2
@@ -152,12 +164,12 @@ Cr     0.0000      0.0000  -%f
             iCISCF_Driver, iCISCF_Driver.mo_coeff, cas_space_symmetry)  # right!
 
         cmin_now = 0.0
-        iCISCF_Driver.fcisolver = iCISCF.iCI(mol=Mol, cmin=cmin_now, state=[
-                                             [0, 0, 1, [1]]],  mo_coeff=mo_init)
+        # iCISCF_Driver.fcisolver = iCISCF.iCI(mol=Mol, cmin=cmin_now, state=[
+        #                                      [0, 0, 1, [1]]],  mo_coeff=mo_init)
         iCISCF_Driver.internal_rotation = True
         iCISCF_Driver.conv_tol = 1e-8
         iCISCF_Driver.max_cycle_macro = 128
-        iCISCF_Driver.canonicalization = True
+        # iCISCF_Driver.canonicalization = True
         iCISCF_Driver.kernel(mo_coeff=mo_init)
 
         core_cmoao = iCISCF_Driver.mo_coeff[:, :Mol.nelectron//2-6]
@@ -234,6 +246,12 @@ Cr     0.0000      0.0000  -%f
         e, h = numpy.linalg.eigh(fock_lo[:ncore, :ncore])
         print("e = ", e)
         lo_mocoeff[:, :ncore] = numpy.dot(lo_mocoeff[:, :ncore], h)  # should be a reordering
+
+        ## active space 
+
+        e, h = numpy.linalg.eigh(fock_lo[ncore:ncore+12, :][:, ncore:ncore+12])
+        print("e = ", e)
+        lo_mocoeff[:, ncore:ncore+12] = numpy.dot(lo_mocoeff[:, ncore:ncore+12], h)
 
         vir_begin = Mol.nelectron//2+6
         e, h = numpy.linalg.eigh(fock_lo[vir_begin:, vir_begin:])
