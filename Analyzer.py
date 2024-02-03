@@ -457,6 +457,34 @@ def Extract_Curve_Info(Res, BondLength, data_pnt: int = 6):
 
     return Res2
 
+from scipy.optimize import curve_fit
+
+def quadratic_fit_estimate_error(x, y, print_verbose=False):
+    # Define the form of the function we want to fit
+    def func(x, a, b, c):
+        return a * x**2 + b * x + c
+
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    # Use curve_fit to fit the function to our data. popt will contain the fitted parameters
+    popt, pcov = curve_fit(func, x, y)
+
+    # Generate predicted y values from our fitted function
+    y_pred = func(x, *popt)
+
+    # Calculate the root mean square error between the predicted and actual y values
+    c = popt[2]
+    c_error = np.sqrt(pcov[2][2])
+
+    if print_verbose:
+        print("Quadratic Regression : \n")
+        print("a                 : %15.8f\n" % popt[0])
+        print("b                 : %15.8f\n" % popt[1])
+        print("c                 : %15.8f\n" % popt[2])
+        print("c_error           : %15.8f\n" % c_error)
+
+    return c, c_error
 
 def LinearRegression_EstimateError(x, y, print_verbose=False):
 

@@ -32,7 +32,7 @@ class iCI_RawData:
         self.etot = etot
 
     def __str__(self) -> str:
-        return "spintwo: %d, symmetry: %d, ncfg: %d, ncsf: %d, istate: %d, evar: %f, ept: %f, etot: %f" % (self.spintwo, self.symmetry, self.ncfg, self.ncsf, self.istate, self.evar, self.ept, self.etot)
+        return "spintwo: %d, symmetry: %s, ncfg: %d, ncsf: %d, istate: %d, evar: %f, ept: %f, etot: %f" % (self.spintwo, self.symmetry, self.ncfg, self.ncsf, self.istate, self.evar, self.ept, self.etot)
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -149,8 +149,11 @@ def Extract_NonRela_Pt_Info_New(filename: str):
                             assert spintwo is not None
 
                         try:
+                            # symmetry = int(str_tmp[SYMMETRY_LOC])
                             symmetry = int(str_tmp[SYMMETRY_LOC])
                         except:
+                            if len(str_tmp[SYMMETRY_LOC]) > 0 and "Rela 4C" in str_tmp[SYMMETRY_LOC]:
+                                symmetry = str_tmp[SYMMETRY_LOC]
                             assert symmetry is not None
 
                         try:
