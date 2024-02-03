@@ -35,7 +35,7 @@ atm_bas = {
     },
 }
 
-dirname = "/home/nzhangcaltech/GitHub_Repo/pyscf_util/Test/AtmOrb"
+dirname = "/home/ningzhang/GitHub_Repo/pyscf_util/Test/AtmOrb"
 
 for atom in ["Cr"]:
     atm_bas[atom]["cmoao"] = ReadIn_Cmoao(
@@ -145,8 +145,8 @@ Cr     0.0000      0.0000  -%f
         norb = 12
         nelec = 12
         iCISCF_Driver = pyscf.mcscf.CASSCF(SCF, norb, nelec)
-        mo_init = pyscf.mcscf.sort_mo_by_irrep(
-            iCISCF_Driver, iCISCF_Driver.mo_coeff, cas_space_symmetry)  # right!
+        # mo_init = pyscf.mcscf.sort_mo_by_irrep(
+        #     iCISCF_Driver, iCISCF_Driver.mo_coeff, cas_space_symmetry)  # right!
 
         bond_int = int(BondLength * 100)
         # cmoao = ReadIn_Cmoao("Cr2_%d_LO_cmoao" % (bond_int), Mol.nao)
