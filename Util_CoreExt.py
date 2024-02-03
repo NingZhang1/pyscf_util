@@ -36,16 +36,27 @@ def _perform_hf_then_localize_orb(mol, CoreOrb: list, debug=False):
     return mf
 
 
-def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, dump = True, debug=False):
+def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, dump = True, debug=False, Rela4C=False, with_breit=False):
 
     # dump the CoreExt FCIDUMP
     # CoreOrb: [{"loc": [0, 2], "cas": [4, 4], "type": "C1s"}, ...]
     # prefix: prefix of the FCIDUMP file
     # return useful info for run the test!
 
-    mo = hf.mo_coeff
-    CoreOrb_CAS = []
+    FACTOR = 1 
 
+    if Rela4C == True:
+        nao_2c = mol.nao * 2
+        assert hf.mo_coeff.shape[0] == nao_2c * 2
+        mo = hf.mo_coeff[:, nao_2c:]
+        if with_breit != True:
+            with_breit = False
+        FACTOR = 2
+    else:
+        Rela4C = False
+        with_breit = False
+        mo = hf.mo_coeff
+    
     nocc = mol.nelectron // 2
 
     Res = []
@@ -55,15 +66,15 @@ def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, dump = True, debug=Fal
         cas = core_orbs_info["cas"]
         assert (loc[1] + cas[0] <= nocc)
         if loc[1] + cas[0] == nocc and loc[0] == 0:
-            orb_order = list(range(mol.nao))
+            orb_order = list(range(FACTOR * mol.nao))
         else:
-            orb_order = list(range(loc[0]))  # the core that not involved
+            orb_order = list(range(FACTOR * loc[0]))  # the core that not involved
             # the nor-core that not involved
-            orb_order.extend(range(loc[1], nocc - cas[0]))
+            orb_order.extend(range(FACTOR * loc[1], FACTOR * (nocc - cas[0])))
             # the core that involved
-            orb_order.extend(list(range(loc[0], loc[1])))
+            orb_order.extend(list(range(FACTOR * loc[0], FACTOR * loc[1])))
             # the nor-core that involved
-            orb_order.extend(list(range(nocc - cas[0], mol.nao)))
+            orb_order.extend(list(range(FACTOR * (nocc - cas[0]), FACTOR * mol.nao)))
 
         # add nsegment
 
@@ -84,14 +95,21 @@ def _dump_CoreExt_FCIDUMP(mol, hf, CoreOrb: list, prefix, dump = True, debug=Fal
         mo = copy.deepcopy(hf.mo_coeff)
 
         mo = mo[:, orb_order]
-        orbsym = pyscf.symm.label_orb_symm(
-            mol, mol.irrep_id, mol.symm_orb, mo)
+        if FACTOR == 1:
+            orbsym = pyscf.symm.label_orb_symm(
+                mol, mol.irrep_id, mol.symm_orb, mo)
+        else:
+            orbsym = [0] * len(orb_order//FACTOR)
 
         ### dump the FCIDUMP ###
 
         if dump:
-            pyscf.tools.fcidump.from_mo(
-                mol, prefix + core_orbs_info["type"], mo, orbsym)
+            if Rela4C is False:
+                pyscf.tools.fcidump.from_mo(
+                    mol, prefix + core_orbs_info["type"], mo, orbsym)
+            else:
+                from Util_Rela4C import FCIDUMP_Rela4C
+                FCIDUMP_Rela4C(mol, hf, with_breit=with_breit, filename=prefix + core_orbs_info["type"], mode="outcore", orbsym_ID=orbsym)
 
         Res.append({"loc": loc, "cas": cas, "type": core_orbs_info["type"],
                     "orb_order": orb_order, "orbsym": orbsym, "mo": mo,
