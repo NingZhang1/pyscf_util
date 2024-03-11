@@ -97,13 +97,17 @@ def get_stat_irrep(Mol, orb, begin_indx, end_indx):
     return stat_irrep
 
 
-def split_loc_given_range(Mol, orb, begin_indx, end_indx, loc_method=lo.Boys):
+def split_loc_given_range(Mol, orb, begin_indx, end_indx, loc_method=lo.Boys, random=False):
     stat_irrep = get_stat_irrep(Mol, orb, begin_indx, end_indx)
     print(stat_irrep)
     Res = copy.deepcopy(orb)
     for irrep in stat_irrep.keys():
         orb_indx = stat_irrep[irrep]
         orb_tmp = Res[:, orb_indx]
+        if random:
+            A = numpy.random.rand(orb_tmp.shape[1], orb_tmp.shape[1])
+            A, _ = numpy.linalg.qr(A)
+            orb_tmp = numpy.dot(orb_tmp, A)
         loc_orb = loc_method(Mol, orb_tmp).kernel()
         Res[:, orb_indx] = loc_orb
     return Res

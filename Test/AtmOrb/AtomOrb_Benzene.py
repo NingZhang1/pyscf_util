@@ -211,8 +211,8 @@ if __name__ == '__main__':
 
     for task in TaskInfo:
 
-        # if task["atom"] not in ["C", "H"]:
-        if task["atom"] not in ["Cr"]:
+        if task["atom"] not in ["C", "H"]:
+        # if task["atom"] not in ["Cr"]:
             continue
 
         Mol_Dooh = pyscf.gto.Mole()
