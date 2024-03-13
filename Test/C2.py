@@ -98,7 +98,7 @@ def get_sym(IrrepMap, Occ):
 
 cas_space_symmetry = {
     'Ag': 2,
-    'B1g':1,
+    'B1g':0,
     'B2g':1,
     'B3g':1,
     'Au': 0,
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     
     bondlength = [1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.5, 4.0]
 
-    for BondLength in bondlength:
+    for BondLength in bondlength[-2:]:
 
         Mol = pyscf.gto.Mole()
         Mol.atom = '''
@@ -127,7 +127,7 @@ C     0.0000      0.0000  -%f
         Mol.symmetry = "D2h"
         Mol.spin = 0
         Mol.charge = 0
-        Mol.verbose = 2
+        Mol.verbose = 4
         # Mol.unit = 'angstorm'
         Mol.build()
         # SCF = pyscf.scf.sfx2c(pyscf.scf.RHF(Mol))
@@ -144,7 +144,7 @@ C     0.0000      0.0000  -%f
         DumpFileName = "FCIDUMP" + "_" + "C2" + "_" + \
             'ccpvdz' + "_" + str(int(BondLength*100)) + "_SCF"
 
-        # tools.fcidump.from_scf(SCF, DumpFileName, 1e-10)
+        tools.fcidump.from_scf(SCF, DumpFileName, 1e-10)
 
         # tools.fcidump.from_mo(Mol, DumpFileName, iCISCF_Driver.mo_coeff, 1e-10)
 
@@ -171,8 +171,8 @@ C     0.0000      0.0000  -%f
         # iCISCF_Driver.internal_rotation = True
         # iCISCF_Driver.conv_tol = 1e-8
         # iCISCF_Driver.max_cycle_macro = 128
-        # # iCISCF_Driver.canonicalization = True
-        # # iCISCF_Driver.kernel(mo_coeff=mo_init)
+        # iCISCF_Driver.canonicalization = True
+        # iCISCF_Driver.kernel(mo_coeff=mo_init)
         
         iCISCF_Driver = SCF
 
@@ -235,6 +235,8 @@ C     0.0000      0.0000  -%f
         lo_coeff = split_loc_given_range(
             Mol, lo_coeff, 0, Mol.nelectron//2-4)  # 局域化的有问题 !
         lo_coeff = split_loc_given_range(
+            Mol, lo_coeff, Mol.nelectron//2-4, Mol.nelectron//2+4, random=True)
+        lo_coeff = split_loc_given_range(
             Mol, lo_coeff, Mol.nelectron//2+4, Mol.nao, random=True)
 
         lo_mocoeff = reduce(numpy.dot, (mo_coeff.T, ovlp, lo_coeff))
@@ -282,6 +284,8 @@ C     0.0000      0.0000  -%f
             "C_1": [],
             "C_2": [],
             "bonding": [],
+            "C_1_act": [],
+            "C_2_act": [],
         }
 
         Res = Analysis_Orb_Comp(Mol, lo_coeff, 0, Mol.nelectron//2-4,
@@ -303,8 +307,28 @@ C     0.0000      0.0000  -%f
             else:
                 List[data['key'][:3]].append(data['orbindx'])
 
-        List["bonding"].extend(
-            list(range(Mol.nelectron//2-4, Mol.nelectron//2+4)))
+        # List["bonding"].extend(
+        #     list(range(Mol.nelectron//2-4, Mol.nelectron//2+4)))
+        
+        Res = Analysis_Orb_Comp(Mol, lo_coeff, Mol.nelectron//2-4, Mol.nelectron//2+4,
+                                atm_bas, tol=0.1, with_distinct_atm=True)
+        
+        for data in Res:
+            print(data)
+            if isinstance(data['key'], list):
+                # judge whether the same orbitals
+                same = True
+                for i in range(len(data['key'])):
+                    if data['key'][i][:3] != data['key'][0][:3]:
+                        same = False
+                        break
+                if same:
+                    List[data['key'][0][:3]+"_act"].append(data['orbindx'])
+                else:
+                    List["bonding"].append(data['orbindx'])
+            else:
+                List[data['key'][:3]+"_act"].append(data['orbindx'])
+        
 
         Res = Analysis_Orb_Comp(Mol, lo_coeff, Mol.nelectron//2+4, Mol.nao,
                                 atm_bas, tol=0.1, with_distinct_atm=True)
@@ -327,10 +351,17 @@ C     0.0000      0.0000  -%f
 
         List["C_1"].sort()
         List["C_2"].sort()
+        List["bonding"].sort()
+        List["C_1_act"].sort()
+        List["C_2_act"].sort()
+        print(List["bonding"])
+        assert len(List["bonding"]) == 0
 
         Reordering = []
-        Reordering.extend(List["bonding"])
+        # Reordering.extend(List["bonding"])
         Reordering.extend(List["C_1"])
+        Reordering.extend(List["C_1_act"])
+        Reordering.extend(List["C_2_act"])
         Reordering.extend(List["C_2"])
 
         print(Reordering)

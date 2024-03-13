@@ -6,6 +6,8 @@ from Util_File import ReadIn_Cmoao, Dump_Cmoao
 from Util_Orb import Analysis_Orb_Comp, _construct_atm_bas
 from pyscf import symm
 import iCISCF
+import Integrals_Manager
+import numpy
 
 # construct ao
 
@@ -76,7 +78,6 @@ def get_sym(IrrepMap, Occ):
     return res
 
 
-
 cas_space_symmetry = {
     'Ag': 2,
     'B1g':1,
@@ -95,12 +96,15 @@ SEGMENT = {
     "C2":list(range(18, 28)),
 }
 
+ATM_LOC_NELEC = (12 - 8) // 2
+ATM_LOC_NOCCORB = ATM_LOC_NELEC // 2
+
 if __name__ == '__main__':
 
     # bondlength = [1.68, 2.5, 2.8, 3.2]
     # bondlength = [1.68]
     # bondlength = [3.2]
-    
+
     bondlength = [1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.5, 4.0]
 
     for BondLength in bondlength:
@@ -120,18 +124,53 @@ C     0.0000      0.0000  -%f
         SCF = pyscf.scf.RHF(Mol)
         SCF.max_cycle = 32
         SCF.conv_tol = 1e-9
-        # SCF.run()
 
-        bond_int = int(BondLength*100)
-        cmoao = ReadIn_Cmoao("C2_%d_LO_cmoao" % (bond_int), Mol.nao)
+        norb = 8
+        nelec = 8
+        iCISCF_Driver = pyscf.mcscf.CASSCF(SCF, norb, nelec)
+        # mo_init = pyscf.mcscf.sort_mo_by_irrep(
+        #     iCISCF_Driver, iCISCF_Driver.mo_coeff, cas_space_symmetry)  # right!
 
-        print(cmoao.shape)
+        bond_int = int(BondLength * 100)
+        # cmoao = ReadIn_Cmoao("Cr2_%d_LO_cmoao" % (bond_int), Mol.nao)
 
-        Res = Analysis_Orb_Comp(Mol, cmoao, 0, Mol.nao,
-                                atm_bas, tol=0.1, with_distinct_atm=True)
+        Mol.symmetry = "C2V"
+        Mol.build()
 
-        # dump segment by segment 
+        ## dump CAS + Cr1 
 
-        for seg in SEGMENT.keys():
-            print("Dumping segment %s" % seg)
-            Dump_Cmoao("C2_%d_LO_cmoao_%s" % (bond_int, seg), cmoao[:, SEGMENT[seg]])
+        cmoao_C1 = ReadIn_Cmoao("../C2_%d_LO_cmoao_%s" % (bond_int, "C1"), Mol.nao, len(SEGMENT["C1"]))
+        cmoao_C1CAS = ReadIn_Cmoao("../C2_%d_LO_cmoao_%s" % (bond_int, "C1CAS"), Mol.nao, len(SEGMENT["C1CAS"]))
+        cmoao_C2 = ReadIn_Cmoao("../C2_%d_LO_cmoao_%s" % (bond_int, "C2"), Mol.nao, len(SEGMENT["C2"]))
+        cmoao_C2CAS = ReadIn_Cmoao("../C2_%d_LO_cmoao_%s" % (bond_int, "C2CAS"), Mol.nao, len(SEGMENT["C2CAS"]))
+        
+        
+        # print(cmoao_CAS.shape)
+        # print(cmoao_C1.shape)
+        # print(cmoao_C2.shape)
+
+        # act_cmoao = numpy.concatenate([cmoao_C1[:, :ATM_LOC_NOCCORB], cmoao_CAS, cmoao_C1[:, ATM_LOC_NOCCORB:]], axis=1)
+        act_cmoao = numpy.concatenate([cmoao_C1CAS, cmoao_C2CAS, cmoao_C1], axis=1)
+        print(act_cmoao.shape)
+        core_cmoao = cmoao_C2[:, :ATM_LOC_NOCCORB]
+
+        Integrals_Manager.dump_heff_casci(Mol, iCISCF_Driver, core_cmoao, act_cmoao, "C2_%d_%s" % (bond_int, "C1"))
+
+        # Integrals_Manager.dump_heff_casci(Mol, iCISCF_Driver, , )
+
+        # act_cmoao = numpy.concatenate([cmoao_C2[:, :ATM_LOC_NOCCORB], cmoao_CAS, cmoao_C2[:, ATM_LOC_NOCCORB:]], axis=1)
+        act_cmoao = numpy.concatenate([cmoao_C1CAS, cmoao_C2CAS, cmoao_C2], axis=1)
+        print(act_cmoao.shape)
+        core_cmoao = cmoao_C1[:, :ATM_LOC_NOCCORB]
+
+        Integrals_Manager.dump_heff_casci(Mol, iCISCF_Driver, core_cmoao, act_cmoao, "C2_%d_%s" % (bond_int, "C2"))
+        
+        cmoao = numpy.concatenate([cmoao_C1, cmoao_C1CAS, cmoao_C2CAS, cmoao_C2], axis=1)
+        
+        SCF = pyscf.scf.RHF(Mol)
+        SCF.max_cycle = 32
+        SCF.conv_tol = 1e-9
+
+        SCF.mo_coeff = cmoao
+        orbsym = OrbSymInfo(Mol, SCF)
+        pyscf.tools.fcidump.from_mo(Mol, "C2_Hmat_%d" % bond_int,cmoao,orbsym)
