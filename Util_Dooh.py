@@ -61,6 +61,8 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     # orbsym_ID, _ = Util_Mole.get_orbsym(mol, coeff)
 
+    A1g = [i for i, x in enumerate(orbsym_ID) if x is A1g_ID]
+    A2g = [i for i, x in enumerate(orbsym_ID) if x is A2g_ID]
     A1u = [i for i, x in enumerate(orbsym_ID) if x is A1u_ID]
     A2u = [i for i, x in enumerate(orbsym_ID) if x is A2u_ID]
 
@@ -93,25 +95,25 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     basis_trans = numpy.identity(len(orbsym_ID), dtype=numpy.complex128)
 
-    Lz = numpy.zeros(len(orbsym_ID), dtype=numpy.int)
+    Lz = numpy.zeros(len(orbsym_ID), dtype=numpy.int32)
 
-    Parity = numpy.ones(len(orbsym_ID), dtype=numpy.int)
+    Parity = numpy.ones(len(orbsym_ID), dtype=numpy.int32)
 
     Parity[A1u] = -1
     Parity[A2u] = -1
 
     for orbx, orby in zip(E1g_x, E1g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 1
         Lz[orby] = -1
 
     for orbx, orby in zip(E1u_x, E1u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 1
         Lz[orby] = -1
@@ -120,16 +122,16 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     for orbx, orby in zip(E2g_x, E2g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 2
         Lz[orby] = -2
 
     for orbx, orby in zip(E2u_x, E2u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 2
         Lz[orby] = -2
@@ -138,16 +140,16 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     for orbx, orby in zip(E3g_x, E3g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 3
         Lz[orby] = -3
 
     for orbx, orby in zip(E3u_x, E3u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 3
         Lz[orby] = -3
@@ -156,16 +158,16 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     for orbx, orby in zip(E4g_x, E4g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 4
         Lz[orby] = -4
 
     for orbx, orby in zip(E4u_x, E4u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 4
         Lz[orby] = -4
@@ -174,16 +176,16 @@ def _get_symmetry_adapted_basis_Dooh(orbsym_ID):
 
     for orbx, orby in zip(E5g_x, E5g_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 5
         Lz[orby] = -5
 
     for orbx, orby in zip(E5u_x, E5u_y):
         basis_trans[orbx, orbx] = factor
-        basis_trans[orby, orbx] = factor*numpy.complex(0, 1)
-        basis_trans[orby, orby] = -factor*numpy.complex(0, 1)
+        basis_trans[orby, orbx] = factor*(0+1j)
+        basis_trans[orby, orby] = -factor*(0+1j)
         basis_trans[orbx, orby] = factor
         Lz[orbx] = 5
         Lz[orby] = -5
