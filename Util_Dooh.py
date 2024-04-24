@@ -611,14 +611,16 @@ C   0.000000000000       0.000000000000       0.621265
     h1e_adapted = h1e_adapted.real
     energy_core = mol.get_enuc()
 
-    tools.fcidump.from_integrals(filename="FCIDUMP_C2",
-                                 h1e=h1e_adapted,
-                                 h2e=int2e_full,
-                                 nuc=energy_core,
-                                 nmo=my_scf.mo_coeff.shape[1],
-                                 nelec=mol.nelectron, 
-                                 tol=1e-10,
-                                 orbsym=orbsym_ID)
+    # tools.fcidump.from_integrals(filename="FCIDUMP_C2",
+    #                              h1e=h1e_adapted,
+    #                              h2e=int2e_full,
+    #                              nuc=energy_core,
+    #                              nmo=my_scf.mo_coeff.shape[1],
+    #                              nelec=mol.nelectron, 
+    #                              tol=1e-10,
+    #                              orbsym=orbsym_ID)   ## this is not correct here ! 
+    
+    FCIDUMP_Dooh(mol, my_scf, "FCIDUMP_C2")
     
     filename = "FCIDUMP_C2_FULL"
     nmo = my_scf.mo_coeff.shape[1]

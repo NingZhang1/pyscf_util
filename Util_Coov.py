@@ -448,6 +448,15 @@ O   0.000000000000       0.000000000000       0.621265
 
     print(int2e_full.shape)
 
+    tools.fcidump.from_integrals(filename="FCIDUMP_CO_C2v",
+                             h1e=h1e,
+                             h2e=int2e_full,
+                             nuc=mol.get_enuc(),
+                             nmo=my_scf.mo_coeff.shape[1],
+                             nelec=mol.nelectron, 
+                             tol=1e-10,
+                             orbsym=orbsym_ID) 
+
     # (1*1|2*2)
 
     int2e_full = numpy.einsum("ijkl,ip->pjkl", int2e_full, basis_trans.conj())
@@ -472,38 +481,39 @@ O   0.000000000000       0.000000000000       0.621265
     h1e_adapted = h1e_adapted.real
     energy_core = mol.get_enuc()
 
-    tools.fcidump.from_integrals(filename="FCIDUMP_CO",
-                                 h1e=h1e_adapted,
-                                 h2e=int2e_full,
-                                 nuc=energy_core,
-                                 nmo=my_scf.mo_coeff.shape[1],
-                                 nelec=mol.nelectron, 
-                                 tol=1e-10,
-                                 orbsym=orbsym_ID)
+    # tools.fcidump.from_integrals(filename="FCIDUMP_CO",
+    #                              h1e=h1e_adapted,
+    #                              h2e=int2e_full,
+    #                              nuc=energy_core,
+    #                              nmo=my_scf.mo_coeff.shape[1],
+    #                              nelec=mol.nelectron, 
+    #                              tol=1e-10,
+    #                              orbsym=orbsym_ID) 
     
-    filename = "FCIDUMP_CO_FULL"
-    nmo = my_scf.mo_coeff.shape[1]
-    nelec = mol.nelectron
-    ms = 0
-    tol = 1e-10
-    nuc = energy_core
-    float_format = tools.fcidump.DEFAULT_FLOAT_FORMAT
-    with open(filename, 'w') as fout:
-        tools.fcidump.write_head(fout, nmo, nelec, ms, orbsym_ID)
-        output_format = float_format + ' %4d %4d %4d %4d\n'
-        for i in range(nmo):
-            for j in range(i+1):
-                for k in range(i+1):
-                    if i>k:
-                        for l in range(i+1):
-                            if abs(int2e_full[i][j][k][l]) > tol:
-                                fout.write(output_format % (int2e_full[i][j][k][l], i+1, j+1, k+1, l+1))
-                    else:
-                        for l in range(j+1):
-                            if abs(int2e_full[i][j][k][l]) > tol:
-                                fout.write(output_format % (int2e_full[i][j][k][l], i+1, j+1, k+1, l+1))
-
-        tools.fcidump.write_hcore(fout, h1e, nmo, tol=tol, float_format=float_format)
-        output_format = float_format + '  0  0  0  0\n'
-        fout.write(output_format % nuc)
+    FCIDUMP_Coov(mol, my_scf, "FCIDUMP_CO")
+    
+    # filename = "FCIDUMP_CO_FULL"
+    # nmo = my_scf.mo_coeff.shape[1]
+    # nelec = mol.nelectron
+    # ms = 0
+    # tol = 1e-10
+    # nuc = energy_core
+    # float_format = tools.fcidump.DEFAULT_FLOAT_FORMAT
+    # with open(filename, 'w') as fout:
+    #     tools.fcidump.write_head(fout, nmo, nelec, ms, orbsym_ID)
+    #     output_format = float_format + ' %4d %4d %4d %4d\n'
+    #     for i in range(nmo):
+    #         for j in range(i+1):
+    #             for k in range(i+1):
+    #                 if i>k:
+    #                     for l in range(i+1):
+    #                         if abs(int2e_full[i][j][k][l]) > tol:
+    #                             fout.write(output_format % (int2e_full[i][j][k][l], i+1, j+1, k+1, l+1))
+    #                 else:
+    #                     for l in range(j+1):
+    #                         if abs(int2e_full[i][j][k][l]) > tol:
+    #                             fout.write(output_format % (int2e_full[i][j][k][l], i+1, j+1, k+1, l+1))
+    #     tools.fcidump.write_hcore(fout, h1e, nmo, tol=tol, float_format=float_format)
+    #     output_format = float_format + '  0  0  0  0\n'
+    #     fout.write(output_format % nuc)
 
