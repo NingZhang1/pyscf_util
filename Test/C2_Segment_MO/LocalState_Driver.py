@@ -75,7 +75,7 @@ def _Generate_InputFile_RDM(File,
         f.write("orbsym=%s\n" % orbsym)
         f.write("weightcutoff=%e\n" % weightcutoff)
         
-dirname = "/home/ningzhangcaltech/Github_Repo/pyscf_util/Test/AtmOrb"
+dirname = "/home/ningzhang/GitHub_Repo/pyscf_util/Test/AtmOrb"
 
 for atom in ["C"]:
     atm_bas[atom]["cmoao"] = ReadIn_Cmoao(
@@ -129,7 +129,7 @@ ATM_LOC_NOCCORB = ATM_LOC_NELEC // 2
 iCI_ProgramName = "ICI_CPP"
 executable = os.getenv(iCI_ProgramName)
 
-rdm_executable="/home/ningzhangcaltech/Github_Repo/iCIPT2_CXX/Tools_Program/MixRDM.exe"
+rdm_executable="/home/ningzhang/iCIPT2_CXX/Tools_Program/MixRDM.exe"
 
 ORBSYM ={
     180:"0 0 3 2",
@@ -144,7 +144,7 @@ ORBSYM ={
 }
 
 CMIN=1e-5
-WEIGHTCUTOFF = 1e-5
+WEIGHTCUTOFF = 1e-4
 
 import shutil
 

@@ -75,7 +75,7 @@ def _Generate_InputFile_Hmat(File,
         f.write("nelec=%s\n" % nelec)
         f.write("nblock=%s\n" % nblock)
         
-dirname = "/home/ningzhangcaltech/Github_Repo/pyscf_util/Test/AtmOrb"
+dirname = "/home/ningzhang/GitHub_Repo/pyscf_util/Test/AtmOrb"
 
 for atom in ["C"]:
     atm_bas[atom]["cmoao"] = ReadIn_Cmoao(
@@ -129,7 +129,7 @@ ATM_LOC_NOCCORB = ATM_LOC_NELEC // 2
 iCI_ProgramName = "ICI_CPP"
 executable = os.getenv(iCI_ProgramName)
 
-rdm_executable="/home/ningzhangcaltech/Github_Repo/iCIPT2_CXX/Tools_Program/Hmat_over_LocalStates.exe"
+rdm_executable="/home/ningzhang/iCIPT2_CXX/Tools_Program/Hmat_over_LocalStates.exe"
 
 ORBSYM ={
     180:"0 0 3 2",
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     bondlength = [1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.5, 4.0]
 
-    for BondLength in bondlength[-3:]:
+    for BondLength in bondlength:
 
         Mol = pyscf.gto.Mole()
         Mol.atom = '''
