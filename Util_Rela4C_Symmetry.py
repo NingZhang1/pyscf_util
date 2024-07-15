@@ -651,7 +651,8 @@ if __name__ == "__main__":
     mol.build()
     mf = scf.dhf.RDHF(mol)
     mf.conv_tol = 1e-12
-    mf.with_breit = True
+    #mf.with_breit = True
+    mf.with_gaunt = True
     mf.kernel()
 
     mo_coeff_backup = mf.mo_coeff.copy()
@@ -802,6 +803,9 @@ if __name__ == "__main__":
     mo_parity = mo_parity[n2c//2:]
     print("mo_parity = ", mo_parity)
 
+    _, _, _, _ = FCIDUMP_Rela4C_SU2(
+        mol, mf, with_breit=False, filename="fcidump_adapted_Coulomb", mode="incore", debug=True)
+
     ############## check the orbital ####################
 
     fock = mf.get_fock()
@@ -867,4 +871,4 @@ if __name__ == "__main__":
                                   scalar_i, scalar_j, scalar_k, scalar_l)
 
     int_coulomb, int_breit, mo_parity, mo_coeff_adapted = FCIDUMP_Rela4C_SU2(
-        mol, mf, with_breit=True, filename="fcidump_adapted_outcore", mode="outcore", debug=True)
+        mol, mf, with_breit=None, filename="fcidump_adapted_outcore", mode="outcore", debug=True)

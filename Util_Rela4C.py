@@ -166,8 +166,29 @@ def _r_outcore_Breit(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOB
     r_outcore.general(mol, (mo_coeff_S, mo_coeff_L, mo_coeff_L, mo_coeff_S), breit_SLLS %
                       prefix, intor="int2e_breit_sps1ssp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
 
+def _r_outcore_Gaunt(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
 
-def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", tol=1e-8):
+    from pyscf.ao2mo import r_outcore
+
+    n2c = mol.nao_2c()
+    mo_coeff = my_RDHF.mo_coeff
+    mo_coeff_mat = numpy.matrix(mo_coeff)
+
+    mo_coeff_pes = mo_coeff_mat[:, n2c:]
+    mo_coeff_L = mo_coeff_pes[:n2c, :]
+    mo_coeff_S = mo_coeff_pes[n2c:, :]
+
+    r_outcore.general(mol, (mo_coeff_L, mo_coeff_S, mo_coeff_L, mo_coeff_S), breit_LSLS %
+                      prefix, intor="int2e_ssp1ssp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (mo_coeff_S, mo_coeff_L, mo_coeff_S, mo_coeff_L), breit_SLSL %
+                      prefix, intor="int2e_sps1sps2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (mo_coeff_L, mo_coeff_S, mo_coeff_S, mo_coeff_L), breit_LSSL %
+                      prefix, intor="int2e_ssp1sps2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (mo_coeff_S, mo_coeff_L, mo_coeff_L, mo_coeff_S), breit_SLLS %
+                      prefix, intor="int2e_sps1ssp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+
+
+def _dump_2e_outcore(fout, n2c, prefix, with_breit, with_gaunt, IsComplex, symmetry="s1", tol=1e-8):
 
     import h5py
 
@@ -176,7 +197,7 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
     feri_coulomb_SSLL = h5py.File(coulomb_SSLL % prefix, 'r')
     feri_coulomb_SSSS = h5py.File(coulomb_SSSS % prefix, 'r')
 
-    if with_breit:
+    if with_breit or with_gaunt:
         feri_breit_LSLS = h5py.File(breit_LSLS % prefix, 'r')
         feri_breit_SLSL = h5py.File(breit_SLSL % prefix, 'r')
         feri_breit_LSSL = h5py.File(breit_LSSL % prefix, 'r')
@@ -188,6 +209,12 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
         feri_breit_SLLS = None
 
     c1 = .5 / lib.param.LIGHT_SPEED
+
+    if with_breit:
+        _sign_ = 1.0
+    else:
+        if with_gaunt:
+            _sign_ = -1.0
 
     if symmetry == "s1":
         if IsComplex:
@@ -229,6 +256,8 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                             feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
 
                         # max_breit = numpy.max(numpy.abs(eri_breit))
+
+                        eri_breit *= _sign_
 
                         # if max_breit > tol:
                         for k in range(n2c):
@@ -278,6 +307,8 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
 
                         # max_breit = numpy.max(numpy.abs(eri_breit))
 
+                        eri_breit *= _sign_
+                        
                         # if max_breit > tol:
                         for k in range(n2c):
                             # max_breit = numpy.max(numpy.abs(eri_breit[k]))
@@ -328,6 +359,8 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
 
                         # max_breit = numpy.max(numpy.abs(eri_breit))
 
+                        eri_breit *= _sign_
+                        
                         # if max_breit > tol:
                         for k in range(i+1):
                             # max_breit = numpy.max(numpy.abs(eri_breit[k]))
@@ -372,9 +405,11 @@ def _dump_2e_outcore(fout, n2c, prefix, with_breit, IsComplex, symmetry="s1", to
                             feri_breit_LSSL['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
                         eri_breit += numpy.array(
                             feri_breit_SLLS['eri_mo'][ij]).reshape(n2c, n2c) * c1**2
-
+    
                         # max_breit = numpy.max(numpy.abs(eri_breit))
 
+                        eri_breit *= _sign_
+                        
                         # if max_breit > tol:
                         for k in range(i+1):
                             # max_breit = numpy.max(numpy.abs(eri_breit[k]))
@@ -476,7 +511,7 @@ def _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="
         raise ValueError("Unknown symmetry %s" % symmetry)
 
 
-def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="incore", orbsym_ID=None, IsComplex=True, tol=1e-8, debug=False):
+def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=None, filename="fcidump", mode="incore", orbsym_ID=None, IsComplex=True, tol=1e-8, debug=False):
     """ Dump the relativistic 4-component integrals in FCIDUMP format
 
     Args:
@@ -508,6 +543,24 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
 
     n4c = 2 * n2c
 
+    if with_breit is None:
+        with_breit = my_RDHF.with_breit
+        with_gaunt = my_RDHF.with_gaunt
+    
+    with_gaunt = my_RDHF.with_gaunt
+
+    if with_breit:
+        INT_LSLS_name = "int2e_breit_ssp1ssp2_spinor"
+        INT_SLSL_name = "int2e_breit_sps1sps2_spinor"
+        INT_LSSL_name = "int2e_breit_ssp1sps2_spinor"
+        INT_SLLS_name = "int2e_breit_sps1ssp2_spinor"
+    else:
+        if with_gaunt:
+            INT_LSLS_name = "int2e_ssp1ssp2_spinor"
+            INT_SLSL_name = "int2e_sps1sps2_spinor"
+            INT_LSSL_name = "int2e_ssp1sps2_spinor"
+            INT_SLLS_name = "int2e_sps1ssp2_spinor"
+
     if mode == "original":
         int2e_res = numpy.zeros((n4c, n4c, n4c, n4c), dtype=numpy.complex128)
         c1 = .5 / lib.param.LIGHT_SPEED
@@ -525,18 +578,18 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
             "pqkl,kr->pqrl", int2e_coulomb, mo_coeff_pes.conj())
         int2e_coulomb = numpy.einsum(
             "pqrl,ls->pqrs", int2e_coulomb, mo_coeff_pes)
-        if with_breit:
+        if with_breit or with_gaunt:
             int2e_breit = numpy.zeros(
                 (n4c, n4c, n4c, n4c), dtype=numpy.complex128)
             ##### (LS|LS) and (SL|SL) #####
-            tmp = mol.intor("int2e_breit_ssp1ssp2_spinor") * c1**2
+            tmp = mol.intor(INT_LSLS_name) * c1**2
             int2e_breit[:n2c, n2c:, :n2c, n2c:] = tmp
-            tmp = mol.intor("int2e_breit_sps1sps2_spinor") * c1**2
+            tmp = mol.intor(INT_SLSL_name) * c1**2
             int2e_breit[n2c:, :n2c, n2c:, :n2c] = tmp
             ##### (LS|SL) and (SL|LS) #####
-            tmp2 = mol.intor("int2e_breit_ssp1sps2_spinor") * c1**2
+            tmp2 = mol.intor(INT_LSSL_name) * c1**2
             int2e_breit[:n2c, n2c:, n2c:, :n2c] = tmp2  # (LS|SL)
-            tmp2 = mol.intor("int2e_breit_sps1ssp2_spinor") * c1**2
+            tmp2 = mol.intor(INT_SLLS_name) * c1**2
             int2e_breit[n2c:, :n2c, :n2c, n2c:] = tmp2  # (SL|LS)
             ###############################
             int2e_breit = numpy.einsum(
@@ -568,9 +621,9 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
         int2e_res += lib.einsum("pqrs,pi,qj,rk,sl->ijkl", int2e_tmp,
                                 mo_coeff_S.conj(), mo_coeff_S, mo_coeff_S.conj(), mo_coeff_S)
         int2e_coulomb = int2e_res
-        if with_breit:
+        if with_breit or with_gaunt:
             ### LSLS part ###
-            int2e_tmp = mol.intor("int2e_breit_ssp1ssp2_spinor") * c1**2
+            int2e_tmp = mol.intor(INT_LSLS_name) * c1**2
             int2e_breit = lib.einsum("pqrs,pi,qj,rk,sl->ijkl", int2e_tmp,
                                      mo_coeff_L.conj(), mo_coeff_S, mo_coeff_L.conj(), mo_coeff_S)
             ### SLSL part ###
@@ -578,7 +631,7 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
             int2e_breit += lib.einsum("pqrs,pi,qj,rk,sl->ijkl", int2e_tmp,
                                       mo_coeff_S.conj(), mo_coeff_L, mo_coeff_S.conj(), mo_coeff_L)
             ### LSSL part ###
-            int2e_tmp = mol.intor("int2e_breit_ssp1sps2_spinor") * c1**2
+            int2e_tmp = mol.intor(INT_LSSL_name) * c1**2
             int2e_breit += lib.einsum("pqrs,pi,qj,rk,sl->ijkl", int2e_tmp,
                                       mo_coeff_L.conj(), mo_coeff_S, mo_coeff_S.conj(), mo_coeff_L)
             ### SLLS part ###
@@ -595,6 +648,9 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
         _r_outcore_Coulomb(mol, my_RDHF, PREFIX)
         if with_breit:
             _r_outcore_Breit(mol, my_RDHF, PREFIX)
+        else:
+            if with_gaunt:
+                _r_outcore_Gaunt(mol, my_RDHF, PREFIX)
 
         int2e_coulomb = None
         int2e_breit = None
@@ -633,10 +689,10 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
                          IsComplex, symmetry="s4", tol=tol)
         else:
             if debug:
-                _dump_2e_outcore(fout, n2c, PREFIX, with_breit,
+                _dump_2e_outcore(fout, n2c, PREFIX, with_breit, with_gaunt,
                                  IsComplex, symmetry="s1", tol=tol)
             else:
-                _dump_2e_outcore(fout, n2c, PREFIX, with_breit,
+                _dump_2e_outcore(fout, n2c, PREFIX, with_breit, with_gaunt,
                                  IsComplex, symmetry="s4", tol=tol)
 
         # elif int2e_coulomb.ndim == 2:
@@ -691,7 +747,7 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=False, filename="fcidump", mode="inc
         os.remove(coulomb_SSLL % PREFIX)
         os.remove(coulomb_SSSS % PREFIX)
 
-        if with_breit:
+        if with_breit or with_gaunt:
             os.remove(breit_LSLS % PREFIX)
             os.remove(breit_SLSL % PREFIX)
             os.remove(breit_LSSL % PREFIX)
