@@ -12,6 +12,15 @@ def Dump_Cmoao(TaskName, mocoeff):
             FILE.write("%d,%d,%20.12e\n" % (i, j, mocoeff[i][j]))
     FILE.close()
 
+def Dump_Cmoao_4C(TaskName, mocoeff):
+    filename = TaskName + ".csv"
+    FILE = open(filename, "w")
+    FILE.write("i,j,mocoeff_real,mocoeff_imag\n")
+    for i in range(mocoeff.shape[0]):
+        for j in range(mocoeff.shape[1]):
+            FILE.write("%d,%d,%20.12e,%20.12e\n" % (i, j, mocoeff[i][j].real, mocoeff[i][j].imag))
+    FILE.close()
+
 
 def Dump_Relint_csv(TaskName, relint):
     filename = TaskName + ".csv"
@@ -103,6 +112,33 @@ def ReadIn_SpinRDM1(filename, norb, nstates, IsAveraged=False):
         rdm1[istate, i, j] = val
         return rdm1
 
+def ReadIn_RDM1_4C(filename, norb, nstates, IsAveraged=False):
+    if IsAveraged:
+        i, j, val_real, val_imag = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,d,d'),
+                                  delimiter=',', skiprows=1, unpack=True)
+        rdm1 = numpy.zeros((norb, norb), dtype=numpy.complex128)
+        rdm1[i, j] = val_real + 1j * val_imag
+        return rdm1
+    else:
+        istate, i, j, val_real, val_imag = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,i,d,d'),
+                                          delimiter=',', skiprows=1, unpack=True)
+        rdm1 = numpy.zeros((nstates, norb, norb), dtype=numpy.complex128)
+        rdm1[istate, i, j] = val_real + 1j * val_imag
+        return rdm1
+
+def ReadIn_RDM2_4C(filename, norb, nstates, IsAveraged=False):
+    if IsAveraged:
+        i, j, k, l, val_real, val_imag = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,i,i,d,d'),
+                                  delimiter=',', skiprows=1, unpack=True)
+        rdm2 = numpy.zeros((norb, norb, norb, norb), dtype=numpy.complex128)
+        rdm2[i, j, k, l] = val_real + 1j * val_imag
+        return rdm2
+    else:
+        istate, i, j, k, l, val_real, val_imag = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,i,i,i,d,d'),
+                                          delimiter=',', skiprows=1, unpack=True)
+        rdm2 = numpy.zeros((nstates, norb, norb, norb, norb), dtype=numpy.complex128)
+        rdm2[istate, i, j, k, l] = val_real + 1j * val_imag
+        return rdm2
 
 if __name__ == "__main__":
     pass
