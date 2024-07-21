@@ -104,10 +104,10 @@ def _get_g(mol, my_RDHF, mo_coeff, type):
     int2e_res[n2c:, n2c:, :n2c, :n2c] = tmp  # SS LL
     int2e_res[:n2c, :n2c, n2c:, n2c:] = tmp.transpose(2, 3, 0, 1)  # LL SS
     int2e_res[n2c:, n2c:, n2c:, n2c:] = mol.intor("int2e_spsp1spsp2_spinor") * c1**4  # SS SS
-    int2e_res = numpy.einsum("ijkl,ip->pjkl", int2e_res, mo_coeffs[0].conj())
-    int2e_res = numpy.einsum("pjkl,jq->pqkl", int2e_res, mo_coeffs[1])
-    int2e_res = numpy.einsum("pqkl,kr->pqrl", int2e_res, mo_coeffs[2].conj())
-    int2e_res = numpy.einsum("pqrl,ls->pqrs", int2e_res, mo_coeffs[3])
+    int2e_res = lib.einsum("ijkl,ip->pjkl", int2e_res, mo_coeffs[0].conj())
+    int2e_res = lib.einsum("pjkl,jq->pqkl", int2e_res, mo_coeffs[1])
+    int2e_res = lib.einsum("pqkl,kr->pqrl", int2e_res, mo_coeffs[2].conj())
+    int2e_res = lib.einsum("pqrl,ls->pqrs", int2e_res, mo_coeffs[3])
     
     if with_breit or with_gaunt:
         int2e_bg = numpy.zeros((n4c, n4c, n4c, n4c), dtype=numpy.complex128)
@@ -122,10 +122,10 @@ def _get_g(mol, my_RDHF, mo_coeff, type):
         tmp2 = mol.intor(INT_SLLS_name) * c1**2
         int2e_bg[n2c:, :n2c, :n2c, n2c:] = tmp2  # (SL|LS)
         ###############################
-        int2e_bg = numpy.einsum("ijkl,ip->pjkl", int2e_bg, mo_coeffs[0].conj())
-        int2e_bg = numpy.einsum("pjkl,jq->pqkl", int2e_bg, mo_coeffs[1])
-        int2e_bg = numpy.einsum("pqkl,kr->pqrl", int2e_bg, mo_coeffs[2].conj())
-        int2e_bg = numpy.einsum("pqrl,ls->pqrs", int2e_bg, mo_coeffs[3])
+        int2e_bg = lib.einsum("ijkl,ip->pjkl", int2e_bg, mo_coeffs[0].conj())
+        int2e_bg = lib.einsum("pjkl,jq->pqkl", int2e_bg, mo_coeffs[1])
+        int2e_bg = lib.einsum("pqkl,kr->pqrl", int2e_bg, mo_coeffs[2].conj())
+        int2e_bg = lib.einsum("pqrl,ls->pqrs", int2e_bg, mo_coeffs[3])
         int2e_res += int2e_bg
 
     return int2e_res
