@@ -33,7 +33,7 @@ atm_bas = {
     },
 }
 
-dirname = "/home/ningzhangcaltech/Github_Repo/pyscf_util/Test/AtmOrb"
+dirname = "/home/ningzhang/GitHub_Repo/pyscf_util/Test/AtmOrb"
 
 for atom in ["C"]:
     atm_bas[atom]["cmoao"] = ReadIn_Cmoao(

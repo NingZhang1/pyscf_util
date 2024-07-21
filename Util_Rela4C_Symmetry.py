@@ -179,7 +179,9 @@ def _atom_Jz_adapted(mol, mo_coeff, mo_energy, debug=False):
         ene_now = mo_energy[loc]
         loc_end = None
         for i in range(loc, mo_coeff.shape[1]):
-            if abs(mo_energy[i] - ene_now) > 1e-5:
+            # if abs(mo_energy[i] - ene_now) > 1e-5:
+            # if abs(mo_energy[i] - ene_now) > 1e-7:
+            if abs(mo_energy[i] - ene_now) > 1e-8:
                 loc_end = i
                 break
 

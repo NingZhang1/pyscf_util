@@ -126,6 +126,20 @@ def ReadIn_RDM1_4C(filename, norb, nstates, IsAveraged=False):
         rdm1[istate, i, j] = val_real + 1j * val_imag
         return rdm1
 
+def ReadIn_RDM1_4C_SU2(filename, norb, nstates, IsAveraged=False):
+    if IsAveraged:
+        i, j, val_real= numpy.loadtxt(filename, dtype=numpy.dtype('i,i,d'),
+                                  delimiter=',', skiprows=1, unpack=True)
+        rdm1 = numpy.zeros((norb, norb))
+        rdm1[i, j] = val_real
+        return rdm1
+    else:
+        istate, i, j, val_real= numpy.loadtxt(filename, dtype=numpy.dtype('i,i,i,d'),
+                                          delimiter=',', skiprows=1, unpack=True)
+        rdm1 = numpy.zeros((nstates, norb, norb))
+        rdm1[istate, i, j] = val_real
+        return rdm1
+    
 def ReadIn_RDM2_4C(filename, norb, nstates, IsAveraged=False):
     if IsAveraged:
         i, j, k, l, val_real, val_imag = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,i,i,d,d'),
@@ -140,5 +154,19 @@ def ReadIn_RDM2_4C(filename, norb, nstates, IsAveraged=False):
         rdm2[istate, i, j, k, l] = val_real + 1j * val_imag
         return rdm2
 
+def ReadIn_RDM2_4C_SU2(filename, norb, nstates, IsAveraged=False):
+    if IsAveraged:
+        i, j, k, l, val_real = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,i,i,d'),
+                                  delimiter=',', skiprows=1, unpack=True)
+        rdm2 = numpy.zeros((norb, norb, norb, norb))
+        rdm2[i, j, k, l] = val_real
+        return rdm2
+    else:
+        istate, i, j, k, l, val_real = numpy.loadtxt(filename, dtype=numpy.dtype('i,i,i,i,i,d'),
+                                          delimiter=',', skiprows=1, unpack=True)
+        rdm2 = numpy.zeros((nstates, norb, norb, norb, norb))
+        rdm2[istate, i, j, k, l] = val_real
+        return rdm2
+    
 if __name__ == "__main__":
     pass

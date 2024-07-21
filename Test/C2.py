@@ -32,7 +32,7 @@ atm_bas = {
     },
 }
 
-dirname = "/home/ningzhangcaltech/Github_Repo/pyscf_util/Test/AtmOrb"
+dirname = "/home/ningzhang/GitHub_Repo/pyscf_util/Test/AtmOrb"
 
 for atom in ["C"]:
     atm_bas[atom]["cmoao"] = ReadIn_Cmoao(
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     
     bondlength = [1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.5, 4.0]
 
-    for BondLength in bondlength[-2:]:
+    for BondLength in bondlength[6:]:
 
         Mol = pyscf.gto.Mole()
         Mol.atom = '''
