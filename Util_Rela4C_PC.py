@@ -60,7 +60,82 @@ def _pair_correction(mol, pes_dm1, pes_dm2, mo_ene, U_mo, g_ppnp, g_pppn):
     return res
 
 
-def _get_g(mol, my_RDHF, mo_coeff, type):
+def _r_outcore_Coulomb_g(mol, my_RDHF, prefix, mo_coeffs, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
+
+    from pyscf.ao2mo import r_outcore
+
+    n2c = mol.nao_2c()
+    
+    #mo_coeff = my_RDHF.mo_coeff
+    #mo_coeff_mat = numpy.matrix(mo_coeff)
+    #mo_coeff_pes = mo_coeff_mat[:, n2c:]
+    #mo_coeff_L = mo_coeff_pes[:n2c, :]
+    #mo_coeff_S = mo_coeff_pes[n2c:, :]
+
+    r_outcore.general(mol, (
+        mo_coeffs[0][:n2c, :], 
+        mo_coeffs[1][:n2c, :], 
+        mo_coeffs[2][:n2c, :], 
+        mo_coeffs[3][:n2c, :]), coulomb_LLLL %
+                      prefix, intor="int2e_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (
+        mo_coeffs[0][n2c:, :], 
+        mo_coeffs[1][n2c:, :], 
+        mo_coeffs[2][n2c:, :], 
+        mo_coeffs[3][n2c:, :]), coulomb_SSSS %
+                      prefix, intor="int2e_spsp1spsp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (
+        mo_coeffs[0][:n2c, :], 
+        mo_coeffs[1][:n2c, :], 
+        mo_coeffs[2][n2c:, :], 
+        mo_coeffs[3][n2c:, :]), coulomb_LLSS %
+                      prefix, intor="int2e_spsp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (
+        mo_coeffs[0][n2c:, :], 
+        mo_coeffs[1][n2c:, :], 
+        mo_coeffs[2][:n2c, :], 
+        mo_coeffs[3][:n2c, :]), coulomb_SSLL %
+                      prefix, intor="int2e_spsp1_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+
+def _r_outcore_Breit_g(mol, my_RDHF, prefix, mo_coeffs, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
+
+    from pyscf.ao2mo import r_outcore
+
+    n2c = mol.nao_2c()
+    
+    #mo_coeff = my_RDHF.mo_coeff
+    #mo_coeff_mat = numpy.matrix(mo_coeff)
+    #mo_coeff_pes = mo_coeff_mat[:, n2c:]
+    #mo_coeff_L = mo_coeff_pes[:n2c, :]
+    #mo_coeff_S = mo_coeff_pes[n2c:, :]
+
+    r_outcore.general(mol, (
+        mo_coeffs[0][:n2c, :], 
+        mo_coeffs[1][n2c:, :], 
+        mo_coeffs[2][:n2c, :], 
+        mo_coeffs[3][n2c:, :]), breit_LSLS %
+                      prefix, intor="int2e_breit_ssp1ssp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (
+        mo_coeffs[0][n2c:, :], 
+        mo_coeffs[1][:n2c, :], 
+        mo_coeffs[2][n2c:, :], 
+        mo_coeffs[3][:n2c, :]), breit_SLSL %
+                      prefix, intor="int2e_breit_sps1sps2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (
+        mo_coeffs[0][:n2c, :], 
+        mo_coeffs[1][n2c:, :], 
+        mo_coeffs[2][n2c:, :], 
+        mo_coeffs[3][:n2c, :]), breit_LSSL %
+                      prefix, intor="int2e_breit_ssp1sps2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+    r_outcore.general(mol, (
+        mo_coeffs[0][n2c:, :], 
+        mo_coeffs[1][:n2c, :], 
+        mo_coeffs[2][:n2c, :], 
+        mo_coeffs[3][n2c:, :]), breit_SLLS %
+                      prefix, intor="int2e_breit_sps1ssp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
+
+    
+def _get_g(mol, my_RDHF, mo_coeff, type, incore=True):
     
     assert type in ["ppnp", "pppn"]
     
@@ -97,37 +172,91 @@ def _get_g(mol, my_RDHF, mo_coeff, type):
             INT_LSSL_name = "int2e_ssp1sps2_spinor"
             INT_SLLS_name = "int2e_sps1ssp2_spinor"
     
-    int2e_res = numpy.zeros((n4c, n4c, n4c, n4c), dtype=numpy.complex128)
-    c1 = .5 / lib.param.LIGHT_SPEED
-    int2e_res[:n2c, :n2c, :n2c, :n2c] = mol.intor("int2e_spinor")  # LL LL
-    tmp = mol.intor("int2e_spsp1_spinor") * c1**2
-    int2e_res[n2c:, n2c:, :n2c, :n2c] = tmp  # SS LL
-    int2e_res[:n2c, :n2c, n2c:, n2c:] = tmp.transpose(2, 3, 0, 1)  # LL SS
-    int2e_res[n2c:, n2c:, n2c:, n2c:] = mol.intor("int2e_spsp1spsp2_spinor") * c1**4  # SS SS
-    int2e_res = numpy.einsum("ijkl,ip->pjkl", int2e_res, mo_coeffs[0].conj())
-    int2e_res = numpy.einsum("pjkl,jq->pqkl", int2e_res, mo_coeffs[1])
-    int2e_res = numpy.einsum("pqkl,kr->pqrl", int2e_res, mo_coeffs[2].conj())
-    int2e_res = numpy.einsum("pqrl,ls->pqrs", int2e_res, mo_coeffs[3])
+    if incore:
+        int2e_res = numpy.zeros((n4c, n4c, n4c, n4c), dtype=numpy.complex128)
+        c1 = .5 / lib.param.LIGHT_SPEED
+        int2e_res[:n2c, :n2c, :n2c, :n2c] = mol.intor("int2e_spinor")  # LL LL
+        tmp = mol.intor("int2e_spsp1_spinor") * c1**2
+        int2e_res[n2c:, n2c:, :n2c, :n2c] = tmp  # SS LL
+        int2e_res[:n2c, :n2c, n2c:, n2c:] = tmp.transpose(2, 3, 0, 1)  # LL SS
+        int2e_res[n2c:, n2c:, n2c:, n2c:] = mol.intor("int2e_spsp1spsp2_spinor") * c1**4  # SS SS
+        int2e_res = numpy.einsum("ijkl,ip->pjkl", int2e_res, mo_coeffs[0].conj())
+        int2e_res = numpy.einsum("pjkl,jq->pqkl", int2e_res, mo_coeffs[1])
+        int2e_res = numpy.einsum("pqkl,kr->pqrl", int2e_res, mo_coeffs[2].conj())
+        int2e_res = numpy.einsum("pqrl,ls->pqrs", int2e_res, mo_coeffs[3])
     
-    if with_breit or with_gaunt:
-        int2e_bg = numpy.zeros((n4c, n4c, n4c, n4c), dtype=numpy.complex128)
-        ##### (LS|LS) and (SL|SL) #####
-        tmp = mol.intor(INT_LSLS_name) * c1**2
-        int2e_bg[:n2c, n2c:, :n2c, n2c:] = tmp
-        tmp = mol.intor(INT_SLSL_name) * c1**2
-        int2e_bg[n2c:, :n2c, n2c:, :n2c] = tmp
-        ##### (LS|SL) and (SL|LS) #####
-        tmp2 = mol.intor(INT_LSSL_name) * c1**2
-        int2e_bg[:n2c, n2c:, n2c:, :n2c] = tmp2  # (LS|SL)
-        tmp2 = mol.intor(INT_SLLS_name) * c1**2
-        int2e_bg[n2c:, :n2c, :n2c, n2c:] = tmp2  # (SL|LS)
-        ###############################
-        int2e_bg = numpy.einsum("ijkl,ip->pjkl", int2e_bg, mo_coeffs[0].conj())
-        int2e_bg = numpy.einsum("pjkl,jq->pqkl", int2e_bg, mo_coeffs[1])
-        int2e_bg = numpy.einsum("pqkl,kr->pqrl", int2e_bg, mo_coeffs[2].conj())
-        int2e_bg = numpy.einsum("pqrl,ls->pqrs", int2e_bg, mo_coeffs[3])
-        int2e_res += int2e_bg
+        if with_breit or with_gaunt:
+            int2e_bg = numpy.zeros((n4c, n4c, n4c, n4c), dtype=numpy.complex128)
+            ##### (LS|LS) and (SL|SL) #####
+            tmp = mol.intor(INT_LSLS_name) * c1**2
+            int2e_bg[:n2c, n2c:, :n2c, n2c:] = tmp
+            tmp = mol.intor(INT_SLSL_name) * c1**2
+            int2e_bg[n2c:, :n2c, n2c:, :n2c] = tmp
+            ##### (LS|SL) and (SL|LS) #####
+            tmp2 = mol.intor(INT_LSSL_name) * c1**2
+            int2e_bg[:n2c, n2c:, n2c:, :n2c] = tmp2  # (LS|SL)
+            tmp2 = mol.intor(INT_SLLS_name) * c1**2
+            int2e_bg[n2c:, :n2c, :n2c, n2c:] = tmp2  # (SL|LS)
+            ###############################
+            int2e_bg = numpy.einsum("ijkl,ip->pjkl", int2e_bg, mo_coeffs[0].conj())
+            int2e_bg = numpy.einsum("pjkl,jq->pqkl", int2e_bg, mo_coeffs[1])
+            int2e_bg = numpy.einsum("pqkl,kr->pqrl", int2e_bg, mo_coeffs[2].conj())
+            int2e_bg = numpy.einsum("pqrl,ls->pqrs", int2e_bg, mo_coeffs[3])
+            int2e_res += int2e_bg
+        
+    else:
+        
+        PREFIX = "RELA_4C_%d" % (numpy.random.randint(1, 19951201+1))
+        
+        _r_outcore_Coulomb_g(mol, my_RDHF, PREFIX, mo_coeffs)
+        
+        import h5py, os
+        
+        c1 = .5 / lib.param.LIGHT_SPEED
+        
+        feri_coulomb_LLLL = h5py.File(coulomb_LLLL % PREFIX, 'r')
+        feri_coulomb_LLSS = h5py.File(coulomb_LLSS % PREFIX, 'r')
+        feri_coulomb_SSLL = h5py.File(coulomb_SSLL % PREFIX, 'r')
+        feri_coulomb_SSSS = h5py.File(coulomb_SSSS % PREFIX, 'r')
+        
+        int2e_res = numpy.array(feri_coulomb_LLLL['eri_mo'])
+        int2e_res+= numpy.array(feri_coulomb_LLSS['eri_mo']) * c1**2
+        int2e_res+= numpy.array(feri_coulomb_SSLL['eri_mo']) * c1**2
+        int2e_res+= numpy.array(feri_coulomb_SSSS['eri_mo']) * c1**4
+        
+        #print("int2e_res.shape = ", int2e_res.shape)
+        
+        os.remove(coulomb_LLLL % PREFIX)
+        os.remove(coulomb_LLSS % PREFIX)
+        os.remove(coulomb_SSLL % PREFIX)
+        os.remove(coulomb_SSSS % PREFIX)
+        
+        if with_breit:
+            _r_outcore_Breit_g(mol, my_RDHF, PREFIX, mo_coeffs)
 
+            feri_breit_LSLS = h5py.File(breit_LSLS % PREFIX, 'r')
+            feri_breit_SLSL = h5py.File(breit_SLSL % PREFIX, 'r')
+            feri_breit_LSSL = h5py.File(breit_LSSL % PREFIX, 'r')
+            feri_breit_SLLS = h5py.File(breit_SLLS % PREFIX, 'r')
+
+            int2e_res += numpy.array(feri_breit_LSLS['eri_mo']) * c1**2
+            int2e_res += numpy.array(feri_breit_SLSL['eri_mo']) * c1**2
+            int2e_res += numpy.array(feri_breit_LSSL['eri_mo']) * c1**2
+            int2e_res += numpy.array(feri_breit_SLLS['eri_mo']) * c1**2
+        
+            os.remove(breit_LSLS % PREFIX)
+            os.remove(breit_SLSL % PREFIX)
+            os.remove(breit_LSSL % PREFIX)
+            os.remove(breit_SLLS % PREFIX)
+            
+        else:
+            if with_gaunt:
+                raise NotImplementedError
+        
+        #print("int2e_res.shape = ", int2e_res.shape)
+        
+        int2e_res = int2e_res.reshape((n2c, n2c, n2c, n2c))
+        
     return int2e_res
 
 def _Generate_InputFile_SiCI(File,
@@ -237,8 +366,8 @@ if __name__ == "__main__":
     print("hcore_mo[4] = ", hcore_mo[4])
     print("U_mo[4]     = ", U_mo[4])
     
-    g_pppn = _get_g(mol, mf, mo_coeff, "pppn")
-    g_ppnp = _get_g(mol, mf, mo_coeff, "ppnp")
+    g_pppn = _get_g(mol, mf, mo_coeff, "pppn", incore=False)
+    g_ppnp = _get_g(mol, mf, mo_coeff, "ppnp", incore=False)
     
     int2e2, breit_2 = FCIDUMP_Rela4C(
         mol, mf, with_breit=None, filename="FCIDUMP_4C_incore", mode="incore", debug=False)
