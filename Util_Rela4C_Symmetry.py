@@ -618,7 +618,9 @@ def atm_d2h_symmetry_adapt_mo_coeff(mol, mo_coeff, debug=False):
     return mo_pes
 
 
-def FCIDUMP_Rela4C_SU2(mol, my_RDHF, with_breit=False, filename="fcidump", mode="incore", debug=False):
+def FCIDUMP_Rela4C_SU2(mol, my_RDHF, with_breit=False, 
+                       npes=None,
+                       filename="fcidump", mode="incore", debug=False):
 
     ######## adapt the molecular orbitals to the Jz symmetry and tr symmetry ########
 
@@ -636,7 +638,10 @@ def FCIDUMP_Rela4C_SU2(mol, my_RDHF, with_breit=False, filename="fcidump", mode=
 
     my_RDHF.mo_coeff = mo_coeff
 
-    coulomb, breit = FCIDUMP_Rela4C(mol, my_RDHF, with_breit=with_breit, filename=filename,
+    if npes is None:
+        npes = n2c
+
+    coulomb, breit = FCIDUMP_Rela4C(mol, my_RDHF,  with_breit=with_breit, npes=npes, filename=filename,
                                     mode=mode, orbsym_ID=mo_parity, IsComplex=False, debug=debug)
 
     if debug:

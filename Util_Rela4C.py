@@ -123,7 +123,7 @@ breit_LSSL = "%s_breit_LSSL.h5"
 breit_SLLS = "%s_breit_SLLS.h5"
 
 
-def _r_outcore_Coulomb(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
+def _r_outcore_Coulomb(mol, my_RDHF, npes, prefix, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
 
     from pyscf.ao2mo import r_outcore
 
@@ -131,7 +131,7 @@ def _r_outcore_Coulomb(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=I
     mo_coeff = my_RDHF.mo_coeff
     mo_coeff_mat = numpy.matrix(mo_coeff)
 
-    mo_coeff_pes = mo_coeff_mat[:, n2c:]
+    mo_coeff_pes = mo_coeff_mat[:, n2c:n2c+npes]
     mo_coeff_L = mo_coeff_pes[:n2c, :]
     mo_coeff_S = mo_coeff_pes[n2c:, :]
 
@@ -145,7 +145,7 @@ def _r_outcore_Coulomb(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=I
                       prefix, intor="int2e_spsp1_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
 
 
-def _r_outcore_Breit(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
+def _r_outcore_Breit(mol, my_RDHF, npes, prefix, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
 
     from pyscf.ao2mo import r_outcore
 
@@ -153,7 +153,7 @@ def _r_outcore_Breit(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOB
     mo_coeff = my_RDHF.mo_coeff
     mo_coeff_mat = numpy.matrix(mo_coeff)
 
-    mo_coeff_pes = mo_coeff_mat[:, n2c:]
+    mo_coeff_pes = mo_coeff_mat[:, n2c:n2c+npes]
     mo_coeff_L = mo_coeff_pes[:n2c, :]
     mo_coeff_S = mo_coeff_pes[n2c:, :]
 
@@ -166,7 +166,7 @@ def _r_outcore_Breit(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOB
     r_outcore.general(mol, (mo_coeff_S, mo_coeff_L, mo_coeff_L, mo_coeff_S), breit_SLLS %
                       prefix, intor="int2e_breit_sps1ssp2_spinor", max_memory=max_memory, ioblk_size=ioblk_size, aosym='s1')
 
-def _r_outcore_Gaunt(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
+def _r_outcore_Gaunt(mol, my_RDHF, npes, prefix, max_memory=MAX_MEMORY, ioblk_size=IOBLK_SIZE):
 
     from pyscf.ao2mo import r_outcore
 
@@ -174,7 +174,7 @@ def _r_outcore_Gaunt(mol, my_RDHF, prefix, max_memory=MAX_MEMORY, ioblk_size=IOB
     mo_coeff = my_RDHF.mo_coeff
     mo_coeff_mat = numpy.matrix(mo_coeff)
 
-    mo_coeff_pes = mo_coeff_mat[:, n2c:]
+    mo_coeff_pes = mo_coeff_mat[:, n2c:n2c+npes]
     mo_coeff_L = mo_coeff_pes[:n2c, :]
     mo_coeff_S = mo_coeff_pes[n2c:, :]
 
@@ -511,7 +511,7 @@ def _dump_2e(fout, int2e_coulomb, int2e_breit, with_breit, IsComplex, symmetry="
         raise ValueError("Unknown symmetry %s" % symmetry)
 
 
-def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=None, filename="fcidump", mode="incore", orbsym_ID=None, IsComplex=True, tol=1e-8, debug=False):
+def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=None, npes=None, filename="fcidump", mode="incore", orbsym_ID=None, IsComplex=True, tol=1e-8, debug=False):
     """ Dump the relativistic 4-component integrals in FCIDUMP format
 
     Args:
@@ -536,7 +536,10 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=None, filename="fcidump", mode="inco
     mo_coeff = my_RDHF.mo_coeff
     mo_coeff_mat = numpy.matrix(mo_coeff)
 
-    mo_coeff_pes = mo_coeff_mat[:, n2c:]
+    if npes is None:
+        npes = n2c
+
+    mo_coeff_pes = mo_coeff_mat[:, n2c:n2c+npes]
 
     hcore = my_RDHF.get_hcore()
     h1e = reduce(numpy.dot, (mo_coeff_pes.H, hcore, mo_coeff_pes))
@@ -645,12 +648,12 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=None, filename="fcidump", mode="inco
         # pyscf.ao2mo.r_outcore.general
         # raise NotImplementedError("outcore mode is not implemented yet")
 
-        _r_outcore_Coulomb(mol, my_RDHF, PREFIX)
+        _r_outcore_Coulomb(mol, my_RDHF, npes, PREFIX)
         if with_breit:
-            _r_outcore_Breit(mol, my_RDHF, PREFIX)
+            _r_outcore_Breit(mol, my_RDHF, npes, PREFIX)
         else:
             if with_gaunt:
-                _r_outcore_Gaunt(mol, my_RDHF, PREFIX)
+                _r_outcore_Gaunt(mol, my_RDHF, npes, PREFIX)
 
         int2e_coulomb = None
         int2e_breit = None
@@ -689,10 +692,10 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=None, filename="fcidump", mode="inco
                          IsComplex, symmetry="s4", tol=tol)
         else:
             if debug:
-                _dump_2e_outcore(fout, n2c, PREFIX, with_breit, with_gaunt,
+                _dump_2e_outcore(fout, npes, PREFIX, with_breit, with_gaunt,
                                  IsComplex, symmetry="s1", tol=tol)
             else:
-                _dump_2e_outcore(fout, n2c, PREFIX, with_breit, with_gaunt,
+                _dump_2e_outcore(fout, npes, PREFIX, with_breit, with_gaunt,
                                  IsComplex, symmetry="s4", tol=tol)
 
         # elif int2e_coulomb.ndim == 2:
@@ -718,7 +721,7 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=None, filename="fcidump", mode="inco
 
         if IsComplex:
             output_format = float_format + float_format + ' %4d %4d  0  0\n'
-            for i in range(n2c):
+            for i in range(npes):
                 # for j in range(n2c):
                 for j in range(i+1):
                     if abs(h1e[i, j]) > tol:
@@ -728,7 +731,7 @@ def FCIDUMP_Rela4C(mol, my_RDHF, with_breit=None, filename="fcidump", mode="inco
             fout.write(output_format % nuc)
         else:
             output_format = float_format + ' %4d %4d  0  0\n'
-            for i in range(n2c):
+            for i in range(npes):
                 # for j in range(n2c):
                 for j in range(i+1):
                     if abs(h1e[i, j]) > tol:
@@ -944,6 +947,8 @@ if __name__ == "__main__":
     mf.with_breit = True
     mf.kernel()
 
+    n2c = mol.nao_2c()
+
     fock = mf.get_fock()
 
     print("mo_ene = ", mf.mo_energy)
@@ -1113,8 +1118,8 @@ if __name__ == "__main__":
               (str(f5.keys()), str(f5[dataname].shape)))
         f5.close()
 
-    _r_outcore_Coulomb(mol, mf, prefix="F", max_memory=5, ioblk_size=2)
-    _r_outcore_Breit(mol, mf, prefix="F", max_memory=5, ioblk_size=2)
+    _r_outcore_Coulomb(mol, mf, n2c, prefix="F", max_memory=5, ioblk_size=2)
+    _r_outcore_Breit(mol, mf, n2c, prefix="F", max_memory=5, ioblk_size=2)
 
     view(coulomb_LLLL % "F")
     view(coulomb_LLSS % "F")
